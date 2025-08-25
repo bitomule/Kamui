@@ -302,7 +302,7 @@ func executeClaudeSession(sessionManager *session.Manager, sessionData *types.Se
 		claudeSessionShort = claudeSessionShort[:8] + "..."
 	}
 	
-	// Set terminal title
+	// Set clean terminal title: "Claude - SessionName"
 	terminalTitle := fmt.Sprintf("Claude - %s", sessionData.SessionID)
 	fmt.Printf("\033]0;%s\007", terminalTitle)
 	
