@@ -312,7 +312,7 @@ func executeClaudeSession(sessionManager *session.Manager, sessionData *types.Se
 		claudeSessionShort, 
 		sessionData.Project.Name)
 	
-	// Show status display
+	// Show enhanced status display
 	fmt.Printf("\n\033[96m╭─ Kamui Session ────────────────────────────────╮\033[0m\n")
 	fmt.Printf("\033[96m│\033[0m \033[1m%-45s\033[0m \033[96m│\033[0m\n", statusLine)
 	fmt.Printf("\033[96m╰────────────────────────────────────────────────╯\033[0m\n\n")
