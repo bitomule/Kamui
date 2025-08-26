@@ -112,7 +112,7 @@ func runSession(cmd *cobra.Command, args []string) error {
 	// Check if Claude Code integration needs setup
 	if err := checkAndSetupClaudeIntegration(); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: Failed to setup Claude integration: %v\n", err)
-		// Continue anyway - AGX can work without status line
+		// Continue anyway - Kamui can work without status line
 	}
 
 	// Import session manager
@@ -482,16 +482,16 @@ func configureClaudeSettings(settingsFile, scriptPath string) error {
 	return nil
 }
 
-// checkAndSetupClaudeIntegration checks if AGX is already configured and sets it up if not
+// checkAndSetupClaudeIntegration checks if Kamui is already configured and sets it up if not
 func checkAndSetupClaudeIntegration() error {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return err
 	}
 
-	statusLineScript := filepath.Join(homeDir, ".claude", "agx-statusline.js")
+	statusLineScript := filepath.Join(homeDir, ".claude", "kamui-statusline.js")
 	
-	// Check if AGX status line script already exists
+	// Check if Kamui status line script already exists
 	if _, err := os.Stat(statusLineScript); err == nil {
 		return nil // Already set up
 	}
