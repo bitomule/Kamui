@@ -1,6 +1,10 @@
-# Kamui - Advanced Session Manager
+# 🎯 Kamui - Advanced Session Manager
 
-🎯 **Kamui is an advanced session manager for Claude Code** with automatic status line integration and project-local session isolation.
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Go Version](https://img.shields.io/badge/go-%3E%3D1.19-blue.svg)](https://golang.org/)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey.svg)]()
+
+**Kamui is an advanced session manager for Claude Code** with automatic status line integration and project-local session isolation.
 
 ## Features
 
@@ -11,21 +15,50 @@
 - **Zero configuration** - Automatic setup on first use
 - **Clean terminal title** - Shows `Claude - SessionName` 
 
-## Installation
+## 📦 Installation
 
+### Package Managers (Recommended)
+
+**macOS/Linux - Homebrew**
 ```bash
-# Clone the repository
-git clone https://github.com/davidcollado/kamui.git
-cd kamui
+brew install bitomule/tap/kamui
+```
 
-# Run the installation script
+**Go Developers**
+```bash
+go install github.com/bitomule/kamui/cmd/kam@latest
+```
+
+### Manual Installation
+
+**Option 1: Install Script (Recommended)**
+```bash
+git clone https://github.com/bitomule/kamui.git
+cd kamui
 ./install.sh
 ```
 
-Or install manually:
+**Option 2: Build from Source**
 ```bash
+git clone https://github.com/bitomule/kamui.git
+cd kamui
 go build -o kam cmd/kam/main.go
-sudo cp kam /usr/local/bin/kam
+sudo mv kam /usr/local/bin/kam
+```
+
+### Requirements
+
+Before installing, make sure you have:
+- **Claude Code CLI** - [Download from claude.ai/code](https://claude.ai/code)
+- **Node.js** (for status line features)
+- **Go 1.19+** (only if building from source)
+
+### Verification
+
+Verify your installation:
+```bash
+kam --version
+kam --help
 ```
 
 ## Quick Start
@@ -69,12 +102,6 @@ Kamui ensures each session name gets its own Claude conversation:
 - `kam info <session>` - Show session details
 - `kam complete <session>` - Mark session as completed
 
-## Requirements
-
-- **Go** 1.19+ for building
-- **Claude Code** CLI installed and configured
-- **Node.js** for status line script
-
 ## Architecture
 
 Kamui uses a clean, modular architecture:
@@ -84,3 +111,41 @@ Kamui uses a clean, modular architecture:
 - **Storage Layer** (`internal/storage`): Atomic file operations  
 - **Claude Integration** (`internal/claude`): Claude Code CLI wrapper
 - **Types** (`pkg/types`): Shared data structures and errors
+
+## Troubleshooting
+
+**Claude Code not found**
+```bash
+# Make sure Claude Code CLI is installed
+claude --version
+
+# Install if missing
+# macOS: Download from claude.ai/code
+# Or use package managers like Homebrew when available
+```
+
+**Status line not appearing**
+```bash
+# Manually configure Claude Code integration
+kam setup
+
+# Check if Node.js is installed (required for status line)
+node --version
+```
+
+**Session not resuming correctly**
+```bash
+# List existing sessions to verify they exist
+kam
+
+# Check session files exist
+ls ~/.claude/projects/*/
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
