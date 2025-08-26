@@ -13,10 +13,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/bitomule/kamui/internal/session"
-	"github.com/bitomule/kamui/pkg/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/bitomule/kamui/internal/session"
+	"github.com/bitomule/kamui/pkg/types"
 )
 
 var (
@@ -53,9 +54,15 @@ func init() {
 	rootCmd.PersistentFlags().Bool("no-color", false, "disable color output")
 
 	// Bind flags to viper
-	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
-	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
-	viper.BindPFlag("no-color", rootCmd.PersistentFlags().Lookup("no-color"))
+	if err := viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config")); err != nil {
+		panic(fmt.Sprintf("failed to bind config flag: %v", err))
+	}
+	if err := viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose")); err != nil {
+		panic(fmt.Sprintf("failed to bind verbose flag: %v", err))
+	}
+	if err := viper.BindPFlag("no-color", rootCmd.PersistentFlags().Lookup("no-color")); err != nil {
+		panic(fmt.Sprintf("failed to bind no-color flag: %v", err))
+	}
 
 	// Add subcommands
 	rootCmd.AddCommand(setupCmd)
@@ -63,7 +70,7 @@ func init() {
 
 func initConfig() {
 	cfgFile := viper.GetString("config")
-	
+
 	if cfgFile != "" {
 		// Use config file from the flag
 		viper.SetConfigFile(cfgFile)
@@ -100,15 +107,15 @@ func initConfig() {
 func setDefaults() {
 	viper.SetDefault("claude.defaultModel", "claude-3-sonnet")
 	viper.SetDefault("claude.retryAttempts", 3)
-	
+
 	viper.SetDefault("session.cleanupInactiveDays", 30)
 	viper.SetDefault("session.enableStatistics", true)
-	
+
 	viper.SetDefault("ui.colorOutput", true)
 	viper.SetDefault("ui.verboseLogging", false)
 }
 
-func runSession(cmd *cobra.Command, args []string) error {
+func runSession(_ *cobra.Command, args []string) error {
 	// Check if Claude Code integration needs setup
 	if err := checkAndSetupClaudeIntegration(); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: Failed to setup Claude integration: %v\n", err)
@@ -121,14 +128,14 @@ func runSession(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return err
 	}
-	
+
 	var sessionName string
-	
+
 	// If no session name provided, show picker
 	if len(args) == 0 {
-		selectedSession, err := showSessionPicker(sessionManager)
-		if err != nil {
-			return err
+		selectedSession, pickerErr := showSessionPicker(sessionManager)
+		if pickerErr != nil {
+			return pickerErr
 		}
 		if selectedSession == "" {
 			// User quit
@@ -139,41 +146,40 @@ func runSession(cmd *cobra.Command, args []string) error {
 		// Session name provided as argument
 		sessionName = args[0]
 	}
-	
+
 	// Create or resume session
 	sessionData, err := sessionManager.CreateOrResumeSession(sessionName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return err
 	}
-	
+
 	fmt.Printf("Kamui: Session '%s' ready\n", sessionData.SessionID)
 	fmt.Printf("Kamui: Project: %s\n", sessionData.Project.Name)
 	fmt.Printf("Kamui: Path: %s\n", sessionData.Project.Path)
 	fmt.Printf("Kamui: Created: %s\n", sessionData.Created.Format("2006-01-02 15:04:05"))
-	
+
 	if sessionData.Claude.SessionID != "" {
 		fmt.Printf("Kamui: Claude session: %s (ready)\n", sessionData.Claude.SessionID)
 	}
-	
+
 	fmt.Println("Kamui: Starting Claude session...")
-	
+
 	// Execute Claude session directly
 	if err := executeClaudeSession(sessionManager, sessionData); err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting Claude: %v\n", err)
 		return err
 	}
-	
+
 	return nil
 }
-
 
 // Setup command
 var setupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "Setup Claude Code integration",
 	Long:  "Configures Claude Code to display AGX session status automatically",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		return setupClaudeIntegration()
 	},
 }
@@ -185,17 +191,17 @@ func showSessionPicker(sessionManager *session.Manager) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to list sessions: %w", err)
 	}
-	
+
 	// Handle no sessions case
 	if len(sessions) == 0 {
 		fmt.Printf("Kamui: No sessions found in %s\n", sessionManager.GetProjectPath())
 		fmt.Println("Kamui: Create a new session with 'kam <session-name>'")
 		return "", nil
 	}
-	
+
 	// Display session picker
 	fmt.Printf("Kamui: Available sessions in %s:\n\n", sessionManager.GetProjectName())
-	
+
 	// Load and display session info
 	sessionInfos := make([]sessionInfo, 0, len(sessions))
 	for i, sessionName := range sessions {
@@ -203,7 +209,7 @@ func showSessionPicker(sessionManager *session.Manager) (string, error) {
 			Index: i + 1,
 			Name:  sessionName,
 		}
-		
+
 		// Load session data for metadata
 		if sessionData, err := sessionManager.GetSession(sessionName); err == nil {
 			info.Created = sessionData.Created
@@ -212,9 +218,9 @@ func showSessionPicker(sessionManager *session.Manager) (string, error) {
 			info.ClaudeSessionID = sessionData.Claude.SessionID
 			info.IsActive = sessionData.Claude.HasActiveContext
 		}
-		
+
 		sessionInfos = append(sessionInfos, info)
-		
+
 		// Display session entry
 		fmt.Printf("  %d. %s\n", info.Index, info.Name)
 		fmt.Printf("     Created: %s\n", info.Created.Format("2006-01-02 15:04:05"))
@@ -230,7 +236,7 @@ func showSessionPicker(sessionManager *session.Manager) (string, error) {
 		}
 		fmt.Println()
 	}
-	
+
 	// Get user selection
 	reader := bufio.NewReader(os.Stdin)
 	for {
@@ -239,21 +245,21 @@ func showSessionPicker(sessionManager *session.Manager) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("failed to read input: %w", err)
 		}
-		
+
 		input = strings.TrimSpace(input)
-		
+
 		// Handle quit
 		if input == "q" || input == "Q" {
 			return "", nil
 		}
-		
+
 		// Parse selection
 		selection, err := strconv.Atoi(input)
 		if err != nil || selection < 1 || selection > len(sessions) {
 			fmt.Printf("Kamui: Invalid selection. Please enter a number between 1 and %d, or 'q' to quit.\n", len(sessions))
 			continue
 		}
-		
+
 		selectedSession := sessions[selection-1]
 		fmt.Printf("Kamui: Selected session '%s'\n", selectedSession)
 		return selectedSession, nil
@@ -262,17 +268,17 @@ func showSessionPicker(sessionManager *session.Manager) (string, error) {
 
 // sessionInfo holds metadata about a session for display
 type sessionInfo struct {
-	Index            int
-	Name             string
-	Created          time.Time
-	LastAccessed     time.Time
-	ProjectPath      string
-	ClaudeSessionID  string
-	IsActive         bool
+	Index           int
+	Name            string
+	Created         time.Time
+	LastAccessed    time.Time
+	ProjectPath     string
+	ClaudeSessionID string
+	IsActive        bool
 }
 
 // executeClaudeSession launches Claude with the session's resume command
-func executeClaudeSession(sessionManager *session.Manager, sessionData *types.Session) error {
+func executeClaudeSession(_ *session.Manager, sessionData *types.Session) error {
 	// Parse the command - it's either "claude" or "claude --resume <session-id>"
 	var args []string
 	if sessionData.Claude.SessionID != "" {
@@ -280,59 +286,59 @@ func executeClaudeSession(sessionManager *session.Manager, sessionData *types.Se
 	} else {
 		args = []string{"claude"}
 	}
-	
+
 	// Find claude executable
 	claudePath, err := exec.LookPath("claude")
 	if err != nil {
 		return fmt.Errorf("claude not found in PATH: %w", err)
 	}
-	
+
 	// Set working directory to project directory
 	err = os.Chdir(sessionData.Project.WorkingDirectory)
 	if err != nil {
 		return fmt.Errorf("failed to change to project directory: %w", err)
 	}
-	
+
 	// Set up AGX environment variables
 	env := os.Environ()
-	
+
 	// Short Claude session ID for display
 	claudeSessionShort := sessionData.Claude.SessionID
 	if len(claudeSessionShort) > 8 {
 		claudeSessionShort = claudeSessionShort[:8] + "..."
 	}
-	
+
 	// Set clean terminal title: "Claude - SessionName"
 	terminalTitle := fmt.Sprintf("Claude - %s", sessionData.SessionID)
 	fmt.Printf("\033]0;%s\007", terminalTitle)
-	
+
 	// Create status display
-	statusLine := fmt.Sprintf("Kamui: %s | %s | %s", 
-		sessionData.SessionID, 
-		claudeSessionShort, 
+	statusLine := fmt.Sprintf("Kamui: %s | %s | %s",
+		sessionData.SessionID,
+		claudeSessionShort,
 		sessionData.Project.Name)
-	
+
 	// Show enhanced status display
 	fmt.Printf("\n\033[96m╭─ Kamui Session ────────────────────────────────╮\033[0m\n")
 	fmt.Printf("\033[96m│\033[0m \033[1m%-45s\033[0m \033[96m│\033[0m\n", statusLine)
 	fmt.Printf("\033[96m╰────────────────────────────────────────────────╯\033[0m\n\n")
-	
+
 	// Set all environment variables for Claude Code statusLine integration
 	env = append(env, fmt.Sprintf("KAMUI_SESSION_ID=%s", sessionData.SessionID))
 	env = append(env, fmt.Sprintf("KAMUI_CLAUDE_SESSION_ID=%s", sessionData.Claude.SessionID))
 	env = append(env, fmt.Sprintf("KAMUI_PROJECT_NAME=%s", sessionData.Project.Name))
 	env = append(env, fmt.Sprintf("KAMUI_PROJECT_PATH=%s", sessionData.Project.Path))
 	env = append(env, fmt.Sprintf("KAMUI_STATUS_LINE=%s", statusLine))
-	env = append(env, fmt.Sprintf("KAMUI_ACTIVE=1"))
+	env = append(env, "KAMUI_ACTIVE=1")
 	env = append(env, fmt.Sprintf("KAMUI_SESSION_SHORT=%s", claudeSessionShort))
-	
+
 	fmt.Printf("Kamui: Launching Claude in %s...\n", sessionData.Project.WorkingDirectory)
-	
+
 	err = syscall.Exec(claudePath, args, env)
 	if err != nil {
 		return fmt.Errorf("failed to exec claude: %w", err)
 	}
-	
+
 	// This line should never be reached if exec succeeds
 	return nil
 }
@@ -351,7 +357,7 @@ func setupClaudeIntegration() error {
 	fmt.Println("Kamui: Setting up Claude Code integration...")
 
 	// Create .claude directory if it doesn't exist
-	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create .claude directory: %w", err)
 	}
 
@@ -441,7 +447,7 @@ function main() {
 
 main();`
 
-	if err := os.WriteFile(scriptPath, []byte(statusLineContent), 0755); err != nil {
+	if err := os.WriteFile(scriptPath, []byte(statusLineContent), 0o600); err != nil {
 		return err
 	}
 
@@ -474,7 +480,7 @@ func configureClaudeSettings(settingsFile, scriptPath string) error {
 		return fmt.Errorf("failed to marshal settings: %w", err)
 	}
 
-	if err := os.WriteFile(settingsFile, data, 0644); err != nil {
+	if err := os.WriteFile(settingsFile, data, 0o600); err != nil {
 		return fmt.Errorf("failed to write settings: %w", err)
 	}
 
@@ -490,7 +496,7 @@ func checkAndSetupClaudeIntegration() error {
 	}
 
 	statusLineScript := filepath.Join(homeDir, ".claude", "kamui-statusline.js")
-	
+
 	// Check if Kamui status line script already exists
 	if _, err := os.Stat(statusLineScript); err == nil {
 		return nil // Already set up

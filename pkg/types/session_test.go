@@ -18,7 +18,7 @@ func TestSessionStates(t *testing.T) {
 		SessionStateArchived,
 		SessionStateError,
 	}
-	
+
 	expectedValues := []string{
 		"active",
 		"paused",
@@ -26,7 +26,7 @@ func TestSessionStates(t *testing.T) {
 		"archived",
 		"error",
 	}
-	
+
 	for i, state := range states {
 		assert.Equal(t, expectedValues[i], string(state))
 	}
@@ -34,7 +34,7 @@ func TestSessionStates(t *testing.T) {
 
 func TestSessionSerialization(t *testing.T) {
 	now := time.Now()
-	
+
 	// Create a complete session structure
 	session := Session{
 		Version:      "1.0.0",
@@ -42,7 +42,7 @@ func TestSessionSerialization(t *testing.T) {
 		Created:      now,
 		LastAccessed: now,
 		LastModified: now,
-		
+
 		Project: ProjectInfo{
 			Name:             "test-project",
 			Path:             "/tmp/test-project",
@@ -51,7 +51,7 @@ func TestSessionSerialization(t *testing.T) {
 			GitCommit:        "abc123",
 			GitRemote:        "origin",
 		},
-		
+
 		Claude: ClaudeInfo{
 			SessionID:        "claude-456789",
 			ConversationID:   "conv-123",
@@ -71,7 +71,7 @@ func TestSessionSerialization(t *testing.T) {
 				ResumeErrors:      []string{"error1", "error2"},
 			},
 		},
-		
+
 		Metadata: SessionMeta{
 			Description: "Test session for unit tests",
 			Tags:        []string{"test", "development"},
@@ -82,7 +82,7 @@ func TestSessionSerialization(t *testing.T) {
 				"number":       42,
 			},
 		},
-		
+
 		Stats: SessionStats{
 			SessionCount:         5,
 			TotalDuration:        "2h30m",
@@ -91,7 +91,7 @@ func TestSessionSerialization(t *testing.T) {
 			MostActiveDay:        "2025-08-26",
 			CommandsExecuted:     150,
 		},
-		
+
 		Lifecycle: LifecycleInfo{
 			State: SessionStateActive,
 			StateHistory: []StateChange{
@@ -108,17 +108,17 @@ func TestSessionSerialization(t *testing.T) {
 			},
 		},
 	}
-	
+
 	// Test JSON marshaling
 	data, err := json.Marshal(session)
 	require.NoError(t, err)
 	assert.NotEmpty(t, data)
-	
+
 	// Test JSON unmarshaling
 	var unmarshaled Session
 	err = json.Unmarshal(data, &unmarshaled)
 	require.NoError(t, err)
-	
+
 	// Verify all fields match
 	assert.Equal(t, session.SessionID, unmarshaled.SessionID)
 	assert.Equal(t, session.Version, unmarshaled.Version)
@@ -135,21 +135,21 @@ func TestSessionSerialization(t *testing.T) {
 
 func TestStateChange(t *testing.T) {
 	now := time.Now()
-	
+
 	stateChange := StateChange{
 		State:     SessionStateCompleted,
 		Timestamp: now,
 		Reason:    "manually_completed",
 	}
-	
+
 	// Test JSON serialization
 	data, err := json.Marshal(stateChange)
 	require.NoError(t, err)
-	
+
 	var unmarshaled StateChange
 	err = json.Unmarshal(data, &unmarshaled)
 	require.NoError(t, err)
-	
+
 	assert.Equal(t, stateChange.State, unmarshaled.State)
 	assert.True(t, stateChange.Timestamp.Equal(unmarshaled.Timestamp))
 	assert.Equal(t, stateChange.Reason, unmarshaled.Reason)
@@ -162,15 +162,15 @@ func TestContextInfo(t *testing.T) {
 		LastCommand:     "go test",
 		WorkingFiles:    []string{"main.go", "types.go", "session_test.go"},
 	}
-	
+
 	// Test JSON serialization
 	data, err := json.Marshal(contextInfo)
 	require.NoError(t, err)
-	
+
 	var unmarshaled ContextInfo
 	err = json.Unmarshal(data, &unmarshaled)
 	require.NoError(t, err)
-	
+
 	assert.Equal(t, contextInfo.MessageCount, unmarshaled.MessageCount)
 	assert.Equal(t, contextInfo.EstimatedTokens, unmarshaled.EstimatedTokens)
 	assert.Equal(t, contextInfo.LastCommand, unmarshaled.LastCommand)
@@ -179,22 +179,22 @@ func TestContextInfo(t *testing.T) {
 
 func TestResumeInfo(t *testing.T) {
 	now := time.Now()
-	
+
 	resumeInfo := ResumeInfo{
 		CanResume:         true,
 		ResumeCommand:     "claude --resume session-123",
 		LastResumeAttempt: &now,
 		ResumeErrors:      []string{"timeout", "connection failed"},
 	}
-	
+
 	// Test JSON serialization
 	data, err := json.Marshal(resumeInfo)
 	require.NoError(t, err)
-	
+
 	var unmarshaled ResumeInfo
 	err = json.Unmarshal(data, &unmarshaled)
 	require.NoError(t, err)
-	
+
 	assert.Equal(t, resumeInfo.CanResume, unmarshaled.CanResume)
 	assert.Equal(t, resumeInfo.ResumeCommand, unmarshaled.ResumeCommand)
 	require.NotNil(t, unmarshaled.LastResumeAttempt)
@@ -209,15 +209,15 @@ func TestResumeInfoNilTimestamp(t *testing.T) {
 		LastResumeAttempt: nil,
 		ResumeErrors:      []string{},
 	}
-	
+
 	// Test JSON serialization with nil timestamp
 	data, err := json.Marshal(resumeInfo)
 	require.NoError(t, err)
-	
+
 	var unmarshaled ResumeInfo
 	err = json.Unmarshal(data, &unmarshaled)
 	require.NoError(t, err)
-	
+
 	assert.Equal(t, resumeInfo.CanResume, unmarshaled.CanResume)
 	assert.Nil(t, unmarshaled.LastResumeAttempt)
 	assert.Equal(t, resumeInfo.ResumeErrors, unmarshaled.ResumeErrors)
@@ -238,25 +238,25 @@ func TestSessionMetaCustomData(t *testing.T) {
 			},
 		},
 	}
-	
+
 	// Test JSON serialization
 	data, err := json.Marshal(metadata)
 	require.NoError(t, err)
-	
+
 	var unmarshaled SessionMeta
 	err = json.Unmarshal(data, &unmarshaled)
 	require.NoError(t, err)
-	
+
 	assert.Equal(t, metadata.Description, unmarshaled.Description)
 	assert.Equal(t, metadata.Tags, unmarshaled.Tags)
 	assert.Equal(t, metadata.Variant, unmarshaled.Variant)
 	assert.Equal(t, metadata.IsDefault, unmarshaled.IsDefault)
-	
+
 	// Verify custom data
 	assert.Equal(t, "value", unmarshaled.CustomData["string_field"])
 	assert.Equal(t, float64(123), unmarshaled.CustomData["number_field"]) // JSON unmarshals numbers as float64
 	assert.Equal(t, true, unmarshaled.CustomData["bool_field"])
-	
+
 	nested, ok := unmarshaled.CustomData["nested"].(map[string]interface{})
 	require.True(t, ok)
 	assert.Equal(t, "value", nested["inner"])
@@ -264,21 +264,21 @@ func TestSessionMetaCustomData(t *testing.T) {
 
 func TestCleanupConfig(t *testing.T) {
 	now := time.Now()
-	
+
 	cleanup := CleanupConfig{
 		Enabled:           true,
 		InactiveThreshold: "30d",
 		LastCleanupCheck:  now,
 	}
-	
+
 	// Test JSON serialization
 	data, err := json.Marshal(cleanup)
 	require.NoError(t, err)
-	
+
 	var unmarshaled CleanupConfig
 	err = json.Unmarshal(data, &unmarshaled)
 	require.NoError(t, err)
-	
+
 	assert.Equal(t, cleanup.Enabled, unmarshaled.Enabled)
 	assert.Equal(t, cleanup.InactiveThreshold, unmarshaled.InactiveThreshold)
 	assert.True(t, cleanup.LastCleanupCheck.Equal(unmarshaled.LastCleanupCheck))
@@ -286,7 +286,7 @@ func TestCleanupConfig(t *testing.T) {
 
 func TestGlobalIndexSerialization(t *testing.T) {
 	now := time.Now()
-	
+
 	globalIndex := GlobalIndex{
 		Version:      "1.0.0",
 		LastSync:     now,
@@ -324,8 +324,8 @@ func TestGlobalIndexSerialization(t *testing.T) {
 			TotalProjects:       1,
 			TotalSessions:       1,
 			ActiveSessionsCount: 1,
-			DiskUsage:          "1.5MB",
-			LastCleanup:        now,
+			DiskUsage:           "1.5MB",
+			LastCleanup:         now,
 		},
 		Configuration: IndexConfig{
 			AutoIndexing:       true,
@@ -334,20 +334,20 @@ func TestGlobalIndexSerialization(t *testing.T) {
 			EnableStatistics:   true,
 		},
 	}
-	
+
 	// Test JSON serialization
 	data, err := json.Marshal(globalIndex)
 	require.NoError(t, err)
-	
+
 	var unmarshaled GlobalIndex
 	err = json.Unmarshal(data, &unmarshaled)
 	require.NoError(t, err)
-	
+
 	assert.Equal(t, globalIndex.Version, unmarshaled.Version)
 	assert.True(t, globalIndex.LastSync.Equal(unmarshaled.LastSync))
 	assert.Equal(t, globalIndex.SyncInterval, unmarshaled.SyncInterval)
 	assert.Len(t, unmarshaled.Sessions, 1)
-	
+
 	// Verify indexed session
 	session := unmarshaled.Sessions[0]
 	assert.Equal(t, "session-1", session.SessionID)
@@ -356,7 +356,7 @@ func TestGlobalIndexSerialization(t *testing.T) {
 	assert.Equal(t, SessionStateActive, session.Status.State)
 	assert.True(t, session.Runtime.ClaudeActive)
 	assert.Equal(t, "claude-123", session.Runtime.ClaudeSessionID)
-	
+
 	// Verify statistics and configuration
 	assert.Equal(t, 1, unmarshaled.Statistics.TotalProjects)
 	assert.True(t, unmarshaled.Configuration.AutoIndexing)

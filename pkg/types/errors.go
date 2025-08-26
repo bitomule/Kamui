@@ -7,9 +7,9 @@ import (
 
 // AGXError represents a base error type for AGX operations
 type AGXError struct {
-	Code    ErrorCode `json:"code"`
-	Message string    `json:"message"`
-	Cause   error     `json:"cause,omitempty"`
+	Code    ErrorCode              `json:"code"`
+	Message string                 `json:"message"`
+	Cause   error                  `json:"cause,omitempty"`
 	Context map[string]interface{} `json:"context,omitempty"`
 }
 
@@ -29,24 +29,24 @@ type ErrorCode string
 
 const (
 	// Dependency errors
-	ErrCodeDependencyMissing   ErrorCode = "DEPENDENCY_MISSING"
-	ErrCodeDependencyVersion   ErrorCode = "DEPENDENCY_VERSION"
-	ErrCodeDependencyFailed    ErrorCode = "DEPENDENCY_FAILED"
-	
-	// Session errors  
-	ErrCodeSessionNotFound     ErrorCode = "SESSION_NOT_FOUND"
-	ErrCodeSessionExists       ErrorCode = "SESSION_EXISTS"
-	ErrCodeSessionCorrupted    ErrorCode = "SESSION_CORRUPTED"
-	ErrCodeSessionLocked       ErrorCode = "SESSION_LOCKED"
-	ErrCodeSessionInvalid      ErrorCode = "SESSION_INVALID"
-	
+	ErrCodeDependencyMissing ErrorCode = "DEPENDENCY_MISSING"
+	ErrCodeDependencyVersion ErrorCode = "DEPENDENCY_VERSION"
+	ErrCodeDependencyFailed  ErrorCode = "DEPENDENCY_FAILED"
+
+	// Session errors
+	ErrCodeSessionNotFound  ErrorCode = "SESSION_NOT_FOUND"
+	ErrCodeSessionExists    ErrorCode = "SESSION_EXISTS"
+	ErrCodeSessionCorrupted ErrorCode = "SESSION_CORRUPTED"
+	ErrCodeSessionLocked    ErrorCode = "SESSION_LOCKED"
+	ErrCodeSessionInvalid   ErrorCode = "SESSION_INVALID"
+
 	// Storage errors
-	ErrCodeStoragePermission   ErrorCode = "STORAGE_PERMISSION"
-	ErrCodeStorageNotFound     ErrorCode = "STORAGE_NOT_FOUND"
-	ErrCodeStorageCorrupted    ErrorCode = "STORAGE_CORRUPTED"
-	ErrCodeStorageFull         ErrorCode = "STORAGE_FULL"
-	ErrCodeStorageLocked       ErrorCode = "STORAGE_LOCKED"
-	
+	ErrCodeStoragePermission ErrorCode = "STORAGE_PERMISSION"
+	ErrCodeStorageNotFound   ErrorCode = "STORAGE_NOT_FOUND"
+	ErrCodeStorageCorrupted  ErrorCode = "STORAGE_CORRUPTED"
+	ErrCodeStorageFull       ErrorCode = "STORAGE_FULL"
+	ErrCodeStorageLocked     ErrorCode = "STORAGE_LOCKED"
+
 	// Claude integration errors
 	ErrCodeClaudeNotFound        ErrorCode = "CLAUDE_NOT_FOUND"
 	ErrCodeClaudeSessionInvalid  ErrorCode = "CLAUDE_SESSION_INVALID"
@@ -55,22 +55,22 @@ const (
 	ErrCodeClaudeStartFailed     ErrorCode = "CLAUDE_START_FAILED"
 	ErrCodeClaudeCommandFailed   ErrorCode = "CLAUDE_COMMAND_FAILED"
 	ErrCodeClaudeTimeout         ErrorCode = "CLAUDE_TIMEOUT"
-	
+
 	// Configuration errors
-	ErrCodeConfigInvalid       ErrorCode = "CONFIG_INVALID"
-	ErrCodeConfigNotFound      ErrorCode = "CONFIG_NOT_FOUND"
-	ErrCodeConfigPermission    ErrorCode = "CONFIG_PERMISSION"
-	
+	ErrCodeConfigInvalid    ErrorCode = "CONFIG_INVALID"
+	ErrCodeConfigNotFound   ErrorCode = "CONFIG_NOT_FOUND"
+	ErrCodeConfigPermission ErrorCode = "CONFIG_PERMISSION"
+
 	// Project errors
-	ErrCodeProjectNotFound     ErrorCode = "PROJECT_NOT_FOUND"
-	ErrCodeProjectInvalid      ErrorCode = "PROJECT_INVALID"
-	ErrCodeProjectPermission   ErrorCode = "PROJECT_PERMISSION"
-	
+	ErrCodeProjectNotFound   ErrorCode = "PROJECT_NOT_FOUND"
+	ErrCodeProjectInvalid    ErrorCode = "PROJECT_INVALID"
+	ErrCodeProjectPermission ErrorCode = "PROJECT_PERMISSION"
+
 	// General errors
-	ErrCodeInvalidInput        ErrorCode = "INVALID_INPUT"
-	ErrCodeTimeout             ErrorCode = "TIMEOUT"
-	ErrCodeInterrupted         ErrorCode = "INTERRUPTED"
-	ErrCodeUnknown             ErrorCode = "UNKNOWN"
+	ErrCodeInvalidInput ErrorCode = "INVALID_INPUT"
+	ErrCodeTimeout      ErrorCode = "TIMEOUT"
+	ErrCodeInterrupted  ErrorCode = "INTERRUPTED"
+	ErrCodeUnknown      ErrorCode = "UNKNOWN"
 )
 
 // Error constructor functions
@@ -84,7 +84,7 @@ func NewDependencyError(message string, cause error) *AGXError {
 	}
 }
 
-// NewSessionError creates a new session-related error  
+// NewSessionError creates a new session-related error
 func NewSessionError(code ErrorCode, message string, cause error) *AGXError {
 	return &AGXError{
 		Code:    code,
@@ -125,7 +125,7 @@ func (e *AGXError) IsRecoverable() bool {
 	switch e.Code {
 	case ErrCodeSessionLocked, ErrCodeStorageLocked:
 		return true // Can retry after lock is released
-	case ErrCodeClaudeResumeFailed:  
+	case ErrCodeClaudeResumeFailed:
 		return true // Can attempt alternative approaches
 	case ErrCodeTimeout:
 		return true // Can retry operation

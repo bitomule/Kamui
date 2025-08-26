@@ -30,7 +30,7 @@ func New() (*Manager, error) {
 			err,
 		)
 	}
-	
+
 	return NewForPath(cwd)
 }
 
@@ -40,7 +40,7 @@ func NewForPath(projectPath string) (*Manager, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return NewWithClient(projectPath, claudeClient)
 }
 
@@ -54,7 +54,7 @@ func NewWithClient(projectPath string, claudeClient claude.ClientInterface) (*Ma
 			err,
 		)
 	}
-	
+
 	// Get absolute path
 	absPath, err := filepath.Abs(projectPath)
 	if err != nil {
@@ -64,9 +64,9 @@ func NewWithClient(projectPath string, claudeClient claude.ClientInterface) (*Ma
 			err,
 		)
 	}
-	
+
 	storage := storage.New(absPath)
-	
+
 	return &Manager{
 		storage:      storage,
 		claudeClient: claudeClient,
@@ -78,7 +78,7 @@ func NewWithClient(projectPath string, claudeClient claude.ClientInterface) (*Ma
 func (m *Manager) CreateOrResumeSession(sessionName string) (*types.Session, error) {
 	var session *types.Session
 	var err error
-	
+
 	// Check if session already exists in storage
 	if m.storage.SessionExists(sessionName) {
 		// Load existing session data
@@ -95,7 +95,7 @@ func (m *Manager) CreateOrResumeSession(sessionName string) (*types.Session, err
 		}
 		fmt.Printf("Kamui: Created new session '%s'\n", sessionName)
 	}
-	
+
 	// Check if this AGX session has a stored Claude session to restore
 	var shouldStartFreshClaude bool
 	if session.Claude.SessionID != "" {
@@ -115,19 +115,19 @@ func (m *Manager) CreateOrResumeSession(sessionName string) (*types.Session, err
 		fmt.Printf("Kamui: No stored Claude session for '%s', starting fresh\n", session.SessionID)
 		shouldStartFreshClaude = true
 	}
-	
+
 	// Set up Claude session
 	if err := m.setupClaudeSession(session, shouldStartFreshClaude); err != nil {
 		return nil, fmt.Errorf("failed to setup Claude session: %w", err)
 	}
-	
+
 	// Update access time and save
 	session.LastAccessed = time.Now()
 	session.LastModified = time.Now()
 	if err := m.storage.SaveSession(session); err != nil {
 		return nil, err
 	}
-	
+
 	return session, nil
 }
 
@@ -147,7 +147,7 @@ func (m *Manager) CompleteSession(sessionName string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	// Update session state
 	session.Lifecycle.State = types.SessionStateCompleted
 	session.Lifecycle.StateHistory = append(session.Lifecycle.StateHistory, types.StateChange{
@@ -155,7 +155,7 @@ func (m *Manager) CompleteSession(sessionName string) error {
 		Timestamp: session.LastModified,
 		Reason:    "manually_completed",
 	})
-	
+
 	// Save updated session
 	return m.storage.SaveSession(session)
 }
@@ -183,19 +183,19 @@ func (m *Manager) setupClaudeSession(session *types.Session, startFresh bool) er
 		if err != nil {
 			return err
 		}
-		
+
 		// Store the discovered session ID
 		session.Claude.SessionID = sessionID
 		session.Claude.HasActiveContext = true
 		session.Claude.LastInteraction = time.Now()
 		session.LastModified = time.Now()
-		
+
 		fmt.Printf("Kamui: Created fresh Claude session: %s\n", sessionID)
 	} else {
 		// Existing Claude session is already ready
 		fmt.Printf("Kamui: Using existing Claude session: %s\n", session.Claude.SessionID)
 	}
-	
+
 	return nil
 }
 

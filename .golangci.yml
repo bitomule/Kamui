@@ -16,6 +16,8 @@ linters-settings:
   govet:
     check-shadowing: true
     enable-all: true
+    disable:
+      - fieldalignment  # Struct field alignment optimizations - not critical
     
   misspell:
     locale: US
@@ -73,6 +75,11 @@ issues:
     - linters:
         - gosec
       text: "G204" # Subprocess with variable arguments - needed for exec.Command
+    
+    # Ignore SA4010 false positive for append usage  
+    - linters:
+        - staticcheck
+      text: "SA4010.*this result of append is never used"
       
   max-issues-per-linter: 0
   max-same-issues: 0

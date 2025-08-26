@@ -4,11 +4,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bitomule/kamui/internal/claude"
-	"github.com/bitomule/kamui/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bitomule/kamui/internal/claude"
+	"github.com/bitomule/kamui/pkg/types"
 )
 
 // MockClaudeClient is a mock implementation of claude.ClientInterface
@@ -33,12 +34,26 @@ func (m *MockClaudeClient) ResumeSession(sessionID, workingDir string) error {
 
 func (m *MockClaudeClient) ListSessions() ([]string, error) {
 	args := m.Called()
-	return args.Get(0).([]string), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	sessions, ok := args.Get(0).([]string)
+	if !ok {
+		return nil, args.Error(1)
+	}
+	return sessions, args.Error(1)
 }
 
 func (m *MockClaudeClient) GetSessionInfo(sessionID, workingDir string) (*claude.SessionInfo, error) {
 	args := m.Called(sessionID, workingDir)
-	return args.Get(0).(*claude.SessionInfo), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	info, ok := args.Get(0).(*claude.SessionInfo)
+	if !ok {
+		return nil, args.Error(1)
+	}
+	return info, args.Error(1)
 }
 
 func (m *MockClaudeClient) TerminateSession(sessionID, workingDir string) error {
@@ -48,7 +63,14 @@ func (m *MockClaudeClient) TerminateSession(sessionID, workingDir string) error 
 
 func (m *MockClaudeClient) DiscoverExistingSessions(workingDir string) ([]string, error) {
 	args := m.Called(workingDir)
-	return args.Get(0).([]string), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	sessions, ok := args.Get(0).([]string)
+	if !ok {
+		return nil, args.Error(1)
+	}
+	return sessions, args.Error(1)
 }
 
 func (m *MockClaudeClient) DiscoverNewestSession(workingDir string) (string, error) {
@@ -228,10 +250,10 @@ func TestListSessions(t *testing.T) {
 	// Create some sessions
 	sessionNames := []string{"session1", "session2", "session3"}
 	for _, name := range sessionNames {
-		session, err := manager.storage.CreateSession(name, tempDir)
-		require.NoError(t, err)
-		err = manager.storage.SaveSession(session)
-		require.NoError(t, err)
+		session, createErr := manager.storage.CreateSession(name, tempDir)
+		require.NoError(t, createErr)
+		saveErr := manager.storage.SaveSession(session)
+		require.NoError(t, saveErr)
 	}
 
 	// List should return all sessions

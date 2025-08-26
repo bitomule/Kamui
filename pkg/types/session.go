@@ -32,29 +32,29 @@ type ProjectInfo struct {
 
 // ClaudeInfo contains Claude Code session information
 type ClaudeInfo struct {
-	SessionID       string        `json:"sessionId"`
-	ConversationID  string        `json:"conversationId"`
-	ModelUsed       string        `json:"modelUsed"`
-	HasActiveContext bool         `json:"hasActiveContext"`
-	LastInteraction time.Time     `json:"lastInteraction"`
-	ContextInfo     ContextInfo   `json:"contextInfo"`
-	ResumeInfo      ResumeInfo    `json:"resumeInfo"`
+	SessionID        string      `json:"sessionId"`
+	ConversationID   string      `json:"conversationId"`
+	ModelUsed        string      `json:"modelUsed"`
+	HasActiveContext bool        `json:"hasActiveContext"`
+	LastInteraction  time.Time   `json:"lastInteraction"`
+	ContextInfo      ContextInfo `json:"contextInfo"`
+	ResumeInfo       ResumeInfo  `json:"resumeInfo"`
 }
 
 // ContextInfo contains metadata about the Claude conversation state
 type ContextInfo struct {
-	MessageCount     int      `json:"messageCount"`
-	EstimatedTokens  int      `json:"estimatedTokens"`
-	LastCommand      string   `json:"lastCommand"`
-	WorkingFiles     []string `json:"workingFiles"`
+	MessageCount    int      `json:"messageCount"`
+	EstimatedTokens int      `json:"estimatedTokens"`
+	LastCommand     string   `json:"lastCommand"`
+	WorkingFiles    []string `json:"workingFiles"`
 }
 
 // ResumeInfo contains information needed for Claude session resumption
 type ResumeInfo struct {
-	CanResume          bool      `json:"canResume"`
-	ResumeCommand      string    `json:"resumeCommand"`
-	LastResumeAttempt  *time.Time `json:"lastResumeAttempt"`
-	ResumeErrors       []string   `json:"resumeErrors"`
+	CanResume         bool       `json:"canResume"`
+	ResumeCommand     string     `json:"resumeCommand"`
+	LastResumeAttempt *time.Time `json:"lastResumeAttempt"`
+	ResumeErrors      []string   `json:"resumeErrors"`
 }
 
 // SessionMeta contains session metadata and user-defined information
@@ -78,9 +78,9 @@ type SessionStats struct {
 
 // LifecycleInfo tracks the session lifecycle and state management
 type LifecycleInfo struct {
-	State        SessionState    `json:"state"`
-	StateHistory []StateChange   `json:"stateHistory"`
-	AutoCleanup  CleanupConfig   `json:"autoCleanup"`
+	State        SessionState  `json:"state"`
+	StateHistory []StateChange `json:"stateHistory"`
+	AutoCleanup  CleanupConfig `json:"autoCleanup"`
 }
 
 // SessionState represents the current state of a session
@@ -103,19 +103,19 @@ type StateChange struct {
 
 // CleanupConfig controls automatic session cleanup behavior
 type CleanupConfig struct {
-	Enabled             bool      `json:"enabled"`
-	InactiveThreshold   string    `json:"inactiveThreshold"`
-	LastCleanupCheck    time.Time `json:"lastCleanupCheck"`
+	Enabled           bool      `json:"enabled"`
+	InactiveThreshold string    `json:"inactiveThreshold"`
+	LastCleanupCheck  time.Time `json:"lastCleanupCheck"`
 }
 
 // GlobalIndex represents the global session discovery index
 type GlobalIndex struct {
-	Version       string          `json:"version"`
-	LastSync      time.Time       `json:"lastSync"`
-	SyncInterval  string          `json:"syncInterval"`
+	Version       string           `json:"version"`
+	LastSync      time.Time        `json:"lastSync"`
+	SyncInterval  string           `json:"syncInterval"`
 	Sessions      []IndexedSession `json:"sessions"`
-	Statistics    IndexStats      `json:"statistics"`
-	Configuration IndexConfig     `json:"configuration"`
+	Statistics    IndexStats       `json:"statistics"`
+	Configuration IndexConfig      `json:"configuration"`
 }
 
 // IndexedSession represents a session entry in the global index
@@ -134,9 +134,9 @@ type IndexedSession struct {
 
 // IndexStatus contains session status information for the index
 type IndexStatus struct {
-	IsActive     bool          `json:"isActive"`
-	LastAccessed time.Time     `json:"lastAccessed"`
-	State        SessionState  `json:"state"`
+	IsActive     bool         `json:"isActive"`
+	LastAccessed time.Time    `json:"lastAccessed"`
+	State        SessionState `json:"state"`
 }
 
 // RuntimeInfo contains current runtime status
@@ -161,35 +161,35 @@ type IndexMeta struct {
 
 // IndexStats contains statistics about all tracked sessions
 type IndexStats struct {
-	TotalProjects       int    `json:"totalProjects"`
-	TotalSessions       int    `json:"totalSessions"`
-	ActiveSessionsCount int    `json:"activeSessionsCount"`
-	DiskUsage           string `json:"diskUsage"`
+	TotalProjects       int       `json:"totalProjects"`
+	TotalSessions       int       `json:"totalSessions"`
+	ActiveSessionsCount int       `json:"activeSessionsCount"`
+	DiskUsage           string    `json:"diskUsage"`
 	LastCleanup         time.Time `json:"lastCleanup"`
 }
 
 // IndexConfig contains configuration for index management
 type IndexConfig struct {
-	AutoIndexing        bool   `json:"autoIndexing"`
-	MaxIndexAge         string `json:"maxIndexAge"`
-	SyncFailureRetries  int    `json:"syncFailureRetries"`
-	EnableStatistics    bool   `json:"enableStatistics"`
+	AutoIndexing       bool   `json:"autoIndexing"`
+	MaxIndexAge        string `json:"maxIndexAge"`
+	SyncFailureRetries int    `json:"syncFailureRetries"`
+	EnableStatistics   bool   `json:"enableStatistics"`
 }
 
 // Config represents the global AGX configuration
 type Config struct {
 	Version string        `json:"version"`
 	Default DefaultConfig `json:"default"`
-	Claude  ClaudeConfig     `json:"claude"`
-	Session SessionConfig    `json:"session"`
-	Storage StorageConfig    `json:"storage"`
-	UI      UIConfig         `json:"ui"`
+	Claude  ClaudeConfig  `json:"claude"`
+	Session SessionConfig `json:"session"`
+	Storage StorageConfig `json:"storage"`
+	UI      UIConfig      `json:"ui"`
 }
 
 // DefaultConfig contains default behavior settings
 type DefaultConfig struct {
-	SessionVariant    string `json:"sessionVariant"`
-	AutoCreateSessions bool  `json:"autoCreateSessions"`
+	SessionVariant     string `json:"sessionVariant"`
+	AutoCreateSessions bool   `json:"autoCreateSessions"`
 	ProjectDetection   string `json:"projectDetection"`
 }
 
@@ -213,18 +213,18 @@ type SessionConfig struct {
 
 // StorageConfig contains storage and indexing settings
 type StorageConfig struct {
-	IndexSyncInterval  string `json:"indexSyncInterval"`
-	EnableGlobalIndex  bool   `json:"enableGlobalIndex"`
-	CompactThreshold   string `json:"compactThreshold"`
-	LogRetentionDays   int    `json:"logRetentionDays"`
+	IndexSyncInterval string `json:"indexSyncInterval"`
+	EnableGlobalIndex bool   `json:"enableGlobalIndex"`
+	CompactThreshold  string `json:"compactThreshold"`
+	LogRetentionDays  int    `json:"logRetentionDays"`
 }
 
 // UIConfig contains user interface settings
 type UIConfig struct {
-	ColorOutput         bool   `json:"colorOutput"`
-	VerboseLogging      bool   `json:"verboseLogging"`
-	ConfirmDestructive  bool   `json:"confirmDestructive"`
-	DefaultEditor       string `json:"defaultEditor"`
+	ColorOutput        bool   `json:"colorOutput"`
+	VerboseLogging     bool   `json:"verboseLogging"`
+	ConfirmDestructive bool   `json:"confirmDestructive"`
+	DefaultEditor      string `json:"defaultEditor"`
 }
 
 // ProjectConfig represents project-specific configuration

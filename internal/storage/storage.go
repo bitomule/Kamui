@@ -14,7 +14,7 @@ import (
 // Storage manages session file operations
 type Storage struct {
 	projectPath string
-	kamuiDir      string
+	kamuiDir    string
 	sessionsDir string
 }
 
@@ -22,10 +22,10 @@ type Storage struct {
 func New(projectPath string) *Storage {
 	kamuiDir := filepath.Join(projectPath, ".claude")
 	sessionsDir := filepath.Join(kamuiDir, "kamui-sessions")
-	
+
 	return &Storage{
 		projectPath: projectPath,
-		kamuiDir:      kamuiDir,
+		kamuiDir:    kamuiDir,
 		sessionsDir: sessionsDir,
 	}
 }
@@ -33,14 +33,14 @@ func New(projectPath string) *Storage {
 // Initialize creates the necessary directories for session storage
 func (s *Storage) Initialize() error {
 	// Create .claude/kamui-sessions directory structure
-	if err := os.MkdirAll(s.sessionsDir, 0700); err != nil {
+	if err := os.MkdirAll(s.sessionsDir, 0o700); err != nil {
 		return types.NewStorageError(
 			types.ErrCodeStoragePermission,
 			"failed to create sessions directory",
 			err,
 		)
 	}
-	
+
 	return nil
 }
 
@@ -49,13 +49,13 @@ func (s *Storage) SaveSession(session *types.Session) error {
 	if err := s.Initialize(); err != nil {
 		return err
 	}
-	
+
 	// Generate session file path
 	sessionFile := filepath.Join(s.sessionsDir, session.SessionID+".json")
-	
+
 	// Create temporary file for atomic write
 	tempFile := sessionFile + ".tmp"
-	
+
 	// Marshal session to JSON
 	data, err := json.MarshalIndent(session, "", "  ")
 	if err != nil {
@@ -65,16 +65,16 @@ func (s *Storage) SaveSession(session *types.Session) error {
 			err,
 		)
 	}
-	
+
 	// Write to temporary file
-	if err := os.WriteFile(tempFile, data, 0600); err != nil {
+	if err := os.WriteFile(tempFile, data, 0o600); err != nil {
 		return types.NewStorageError(
 			types.ErrCodeStoragePermission,
 			"failed to write session file",
 			err,
 		)
 	}
-	
+
 	// Atomic move to final location
 	if err := os.Rename(tempFile, sessionFile); err != nil {
 		os.Remove(tempFile) // cleanup temp file
@@ -84,14 +84,14 @@ func (s *Storage) SaveSession(session *types.Session) error {
 			err,
 		)
 	}
-	
+
 	return nil
 }
 
 // LoadSession loads a session from disk
 func (s *Storage) LoadSession(sessionID string) (*types.Session, error) {
 	sessionFile := filepath.Join(s.sessionsDir, sessionID+".json")
-	
+
 	// Check if file exists
 	if _, err := os.Stat(sessionFile); os.IsNotExist(err) {
 		return nil, types.NewStorageError(
@@ -100,7 +100,7 @@ func (s *Storage) LoadSession(sessionID string) (*types.Session, error) {
 			err,
 		)
 	}
-	
+
 	// Read file
 	data, err := os.ReadFile(sessionFile)
 	if err != nil {
@@ -110,7 +110,7 @@ func (s *Storage) LoadSession(sessionID string) (*types.Session, error) {
 			err,
 		)
 	}
-	
+
 	// Unmarshal JSON
 	var session types.Session
 	if err := json.Unmarshal(data, &session); err != nil {
@@ -120,7 +120,7 @@ func (s *Storage) LoadSession(sessionID string) (*types.Session, error) {
 			err,
 		)
 	}
-	
+
 	return &session, nil
 }
 
@@ -136,7 +136,7 @@ func (s *Storage) ListSessions() ([]string, error) {
 	if _, err := os.Stat(s.sessionsDir); os.IsNotExist(err) {
 		return []string{}, nil // no sessions yet
 	}
-	
+
 	entries, err := os.ReadDir(s.sessionsDir)
 	if err != nil {
 		return nil, types.NewStorageError(
@@ -145,7 +145,7 @@ func (s *Storage) ListSessions() ([]string, error) {
 			err,
 		)
 	}
-	
+
 	var sessionIDs []string
 	for _, entry := range entries {
 		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".json" {
@@ -154,14 +154,14 @@ func (s *Storage) ListSessions() ([]string, error) {
 			sessionIDs = append(sessionIDs, sessionID)
 		}
 	}
-	
+
 	return sessionIDs, nil
 }
 
 // DeleteSession removes a session file
 func (s *Storage) DeleteSession(sessionID string) error {
 	sessionFile := filepath.Join(s.sessionsDir, sessionID+".json")
-	
+
 	if err := os.Remove(sessionFile); err != nil {
 		if os.IsNotExist(err) {
 			return types.NewStorageError(
@@ -176,24 +176,24 @@ func (s *Storage) DeleteSession(sessionID string) error {
 			err,
 		)
 	}
-	
+
 	return nil
 }
 
 // CreateSession creates a new session with default values
 func (s *Storage) CreateSession(sessionID, projectPath string) (*types.Session, error) {
 	now := time.Now()
-	
+
 	// Get project name from path
 	projectName := filepath.Base(projectPath)
-	
+
 	session := &types.Session{
 		Version:      "1.0.0",
 		SessionID:    sessionID,
 		Created:      now,
 		LastAccessed: now,
 		LastModified: now,
-		
+
 		Project: types.ProjectInfo{
 			Name:             projectName,
 			Path:             projectPath,
@@ -202,7 +202,7 @@ func (s *Storage) CreateSession(sessionID, projectPath string) (*types.Session, 
 			GitCommit:        "", // TODO: Get from git
 			GitRemote:        "", // TODO: Get from git
 		},
-		
+
 		Claude: types.ClaudeInfo{
 			SessionID:        "",
 			ConversationID:   "",
@@ -222,7 +222,7 @@ func (s *Storage) CreateSession(sessionID, projectPath string) (*types.Session, 
 				ResumeErrors:      []string{},
 			},
 		},
-		
+
 		Metadata: types.SessionMeta{
 			Description: fmt.Sprintf("Development session for %s", projectName),
 			Tags:        []string{"development"},
@@ -230,7 +230,7 @@ func (s *Storage) CreateSession(sessionID, projectPath string) (*types.Session, 
 			IsDefault:   true,
 			CustomData:  make(map[string]interface{}),
 		},
-		
+
 		Stats: types.SessionStats{
 			SessionCount:         1,
 			TotalDuration:        "0m",
@@ -239,7 +239,7 @@ func (s *Storage) CreateSession(sessionID, projectPath string) (*types.Session, 
 			MostActiveDay:        now.Format("2006-01-02"),
 			CommandsExecuted:     0,
 		},
-		
+
 		Lifecycle: types.LifecycleInfo{
 			State: types.SessionStateActive,
 			StateHistory: []types.StateChange{
@@ -256,7 +256,7 @@ func (s *Storage) CreateSession(sessionID, projectPath string) (*types.Session, 
 			},
 		},
 	}
-	
+
 	return session, nil
 }
 
@@ -266,7 +266,7 @@ func (s *Storage) UpdateSessionAccess(sessionID string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	session.LastAccessed = time.Now()
 	return s.SaveSession(session)
 }
