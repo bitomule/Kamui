@@ -74,3 +74,13 @@ Kamui ensures each session name gets its own Claude conversation:
 - **Go** 1.19+ for building
 - **Claude Code** CLI installed and configured
 - **Node.js** for status line script
+
+## Architecture
+
+Kamui uses a clean, modular architecture:
+
+- **CLI Layer** (`cmd/kam`): User interface and command handling
+- **Session Management** (`internal/session`): Core business logic
+- **Storage Layer** (`internal/storage`): Atomic file operations  
+- **Claude Integration** (`internal/claude`): Claude Code CLI wrapper
+- **Types** (`pkg/types`): Shared data structures and errors
