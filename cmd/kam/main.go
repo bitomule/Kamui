@@ -13,8 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/davidcollado/kamui/internal/session"
-	"github.com/davidcollado/kamui/pkg/types"
+	"github.com/bitomule/kamui/internal/session"
+	"github.com/bitomule/kamui/pkg/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

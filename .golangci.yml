@@ -1,0 +1,78 @@
+run:
+  timeout: 5m
+  go: "1.22"
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  
+  gocyclo:
+    min-complexity: 15
+    
+  goimports:
+    local-prefixes: github.com/bitomule/kamui
+    
+  govet:
+    check-shadowing: true
+    enable-all: true
+    
+  misspell:
+    locale: US
+    
+  revive:
+    severity: warning
+    rules:
+      - name: exported
+        severity: error
+      - name: unreachable-code
+        severity: warning
+      - name: unused-parameter
+        severity: warning
+        
+  staticcheck:
+    go: "1.22"
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - typecheck
+    - unused
+    - goimports
+    - gocyclo
+    - misspell
+    - revive
+    - gosec
+    - unconvert
+    - gofmt
+    - gofumpt
+  
+  disable:
+    - exhaustruct  # Too strict for this project
+    - varnamelen   # Variable naming style can be flexible
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gosec
+        - revive
+    
+    # Allow long lines in test files for readability  
+    - path: _test\.go
+      text: "line is"
+      linters:
+        - lll
+        
+    # Ignore certain gosec rules that are not relevant
+    - linters:
+        - gosec
+      text: "G204" # Subprocess with variable arguments - needed for exec.Command
+      
+  max-issues-per-linter: 0
+  max-same-issues: 0

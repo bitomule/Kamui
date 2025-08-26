@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davidcollado/kamui/pkg/types"
+	"github.com/bitomule/kamui/pkg/types"
 )
 
 // Client manages Claude Code operations

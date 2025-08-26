@@ -7,16 +7,16 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/davidcollado/kamui/internal/claude"
-	"github.com/davidcollado/kamui/internal/storage"
-	"github.com/davidcollado/kamui/pkg/types"
+	"github.com/bitomule/kamui/internal/claude"
+	"github.com/bitomule/kamui/internal/storage"
+	"github.com/bitomule/kamui/pkg/types"
 )
 
 // Manager handles session lifecycle and coordination
 type Manager struct {
-	storage     *storage.Storage
-	claudeClient *claude.Client
-	projectPath string
+	storage      *storage.Storage
+	claudeClient claude.ClientInterface
+	projectPath  string
 }
 
 // New creates a new session manager for the current working directory
@@ -36,6 +36,16 @@ func New() (*Manager, error) {
 
 // NewForPath creates a new session manager for a specific project path
 func NewForPath(projectPath string) (*Manager, error) {
+	claudeClient, err := claude.New()
+	if err != nil {
+		return nil, err
+	}
+	
+	return NewWithClient(projectPath, claudeClient)
+}
+
+// NewWithClient creates a new session manager with a custom Claude client (useful for testing)
+func NewWithClient(projectPath string, claudeClient claude.ClientInterface) (*Manager, error) {
 	// Verify project path exists
 	if _, err := os.Stat(projectPath); os.IsNotExist(err) {
 		return nil, types.NewStorageError(
@@ -53,12 +63,6 @@ func NewForPath(projectPath string) (*Manager, error) {
 			"failed to resolve absolute path",
 			err,
 		)
-	}
-	
-	// Initialize clients
-	claudeClient, err := claude.New()
-	if err != nil {
-		return nil, err
 	}
 	
 	storage := storage.New(absPath)

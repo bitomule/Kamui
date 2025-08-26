@@ -1,0 +1,67 @@
+{
+  "version": "1.0.0",
+  "sessionId": "example-session",
+  "created": "2025-08-26T15:30:00Z",
+  "lastAccessed": "2025-08-26T16:45:00Z",
+  "lastModified": "2025-08-26T16:45:00Z",
+  "project": {
+    "name": "example-project",
+    "path": "/tmp/example-project",
+    "workingDirectory": "/tmp/example-project",
+    "gitBranch": "main",
+    "gitCommit": "abc123def456",
+    "gitRemote": "origin"
+  },
+  "claude": {
+    "sessionId": "claude-example-123456",
+    "conversationId": "conv-789",
+    "modelUsed": "claude-3-sonnet",
+    "hasActiveContext": true,
+    "lastInteraction": "2025-08-26T16:45:00Z",
+    "contextInfo": {
+      "messageCount": 15,
+      "estimatedTokens": 3500,
+      "lastCommand": "go test ./...",
+      "workingFiles": ["main.go", "session.go", "storage.go"]
+    },
+    "resumeInfo": {
+      "canResume": true,
+      "resumeCommand": "claude --resume claude-example-123456",
+      "lastResumeAttempt": "2025-08-26T16:30:00Z",
+      "resumeErrors": []
+    }
+  },
+  "metadata": {
+    "description": "Example development session for testing",
+    "tags": ["development", "testing", "example"],
+    "variant": "main",
+    "isDefault": true,
+    "customData": {
+      "priority": "high",
+      "feature": "session-management"
+    }
+  },
+  "statistics": {
+    "sessionCount": 3,
+    "totalDuration": "2h15m",
+    "averageSessionLength": "45m",
+    "lastSessionDuration": "30m",
+    "mostActiveDay": "2025-08-26",
+    "commandsExecuted": 42
+  },
+  "lifecycle": {
+    "state": "active",
+    "stateHistory": [
+      {
+        "state": "active",
+        "timestamp": "2025-08-26T15:30:00Z",
+        "reason": "session_created"
+      }
+    ],
+    "autoCleanup": {
+      "enabled": true,
+      "inactiveThreshold": "30d",
+      "lastCleanupCheck": "2025-08-26T16:45:00Z"
+    }
+  }
+}

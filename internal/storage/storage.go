@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/davidcollado/kamui/pkg/types"
+	"github.com/bitomule/kamui/pkg/types"
 )
 
 // Storage manages session file operations

@@ -1,0 +1,4 @@
+{"sessionId": "test-session-123", "type": "user", "content": "Hello, can you help me with Go testing?", "timestamp": "2025-08-26T15:30:00Z"}
+{"sessionId": "test-session-123", "type": "assistant", "content": "I'd be happy to help you with Go testing! What specific aspect would you like to know about?", "timestamp": "2025-08-26T15:30:01Z"}
+{"sessionId": "test-session-123", "type": "user", "content": "How do I write unit tests with testify?", "timestamp": "2025-08-26T15:30:30Z"}
+{"sessionId": "test-session-123", "type": "assistant", "content": "Here's how to write unit tests with testify:\n\n```go\nfunc TestExample(t *testing.T) {\n    assert.Equal(t, expected, actual)\n    require.NoError(t, err)\n}\n```", "timestamp": "2025-08-26T15:30:45Z"}
