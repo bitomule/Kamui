@@ -3,6 +3,10 @@ name: Update Homebrew Formula
 on:
   release:
     types: [published]
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       tag:
@@ -14,7 +18,10 @@ jobs:
   homebrew:
     name: Update Homebrew Tap
     runs-on: ubuntu-latest
-    if: github.event.release.prerelease != true
+    if: >-
+      (github.event_name == 'release' && github.event.release.prerelease != true) ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'workflow_dispatch')
     
     steps:
     - name: Checkout Kamui repo
@@ -23,14 +30,28 @@ jobs:
     - name: Get release info
       id: release
       run: |
+        echo "🔍 Event: ${{ github.event_name }}"
+        echo "🔍 Ref: ${GITHUB_REF}"
+        
         if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
           TAG="${{ inputs.tag }}"
+          echo "📋 Manual dispatch with tag: $TAG"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+        elif [ "${{ github.event_name }}" = "workflow_run" ]; then
+          # Get the latest release tag
+          TAG=$(gh release list --limit 1 | cut -f1)
+          echo "🚀 Workflow run trigger, latest release: $TAG"
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "version=${TAG#v}" >> $GITHUB_OUTPUT
         else
+          # Direct release trigger
+          echo "📦 Direct release trigger"
           echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
         fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         
     - name: Download release tarball and calculate SHA256
       id: checksum
