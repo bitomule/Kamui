@@ -50,10 +50,12 @@ jobs:
           echo "Please add the HOMEBREW_TAP_TOKEN secret to the repository settings"
           exit 1
         fi
-        git clone https://${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/bitomule/homebrew-tap.git
+        echo "✅ HOMEBREW_TAP_TOKEN is set"
+        git clone https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/bitomule/homebrew-tap.git
         cd homebrew-tap
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
+        echo "📂 Current branch: $(git branch --show-current)"
         
     - name: Update kamui.rb formula
       run: |
@@ -127,7 +129,13 @@ jobs:
         - SHA256: ${{ steps.checksum.outputs.sha256 }}
         - Automated update from release workflow"
         
-        git push origin master
+        echo "🚀 Pushing changes to homebrew-tap..."
+        if ! git push origin master; then
+          echo "❌ Push failed. Checking token permissions..."
+          echo "The HOMEBREW_TAP_TOKEN needs 'repo' or 'public_repo' scope"
+          echo "Please verify the token has write access to bitomule/homebrew-tap"
+          exit 1
+        fi
         
     - name: Summary
       run: |
