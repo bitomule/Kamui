@@ -70,9 +70,9 @@ jobs:
         fi
         
     - name: Create Release
-      uses: ncipollo/create-release@v1
+      uses: softprops/action-gh-release@v2
+      if: github.ref_type == 'tag'
       with:
-        tag: ${{ steps.tag.outputs.tag }}
         name: Release ${{ steps.tag.outputs.tag }}
         body: |
           🎯 **Kamui** - Advanced session manager for Claude Code
@@ -106,7 +106,8 @@ jobs:
           - Download from: https://claude.ai/code
           
           **Full Changelog**: https://github.com/bitomule/kamui/commits/${{ steps.tag.outputs.tag }}
-        artifacts: "bin/*"
+        files: |
+          bin/*
+          bin/checksums.txt
         draft: false
         prerelease: false
-        token: ${{ secrets.GITHUB_TOKEN }}
