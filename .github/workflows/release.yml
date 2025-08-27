@@ -69,9 +69,7 @@ jobs:
       id: changelog
       run: |
         if git describe --tags --abbrev=0 HEAD^ >/dev/null 2>&1; then
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^)
-          CHANGELOG=$(git log --pretty=format:"- %s" ${PREVIOUS_TAG}..HEAD | head -10)
-          echo "changelog=${CHANGELOG}" >> $GITHUB_OUTPUT
+          echo "changelog=New features and improvements since last release" >> $GITHUB_OUTPUT
         else
           echo "changelog=Initial release" >> $GITHUB_OUTPUT
         fi
