@@ -30,26 +30,11 @@ jobs:
       id: tag
       run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
         
-    - name: Cache Go modules
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-release-${{ github.sha }}-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-release-${{ github.sha }}-
-          ${{ runner.os }}-go-release-
-          
-    - name: Download dependencies
-      run: go mod download
-      
-    - name: Clean build environment
+    - name: Download dependencies and clean build environment
       run: |
+        go mod download
         rm -rf bin
         mkdir -p bin
-        go clean -cache
-        go clean -modcache || true
       
     - name: Build for Linux
       run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ steps.tag.outputs.tag }} -X main.commit=${{ github.sha }}" -o bin/kam-linux-amd64 ./cmd/kam
