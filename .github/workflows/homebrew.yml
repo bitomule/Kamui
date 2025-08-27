@@ -127,7 +127,7 @@ jobs:
         - SHA256: ${{ steps.checksum.outputs.sha256 }}
         - Automated update from release workflow"
         
-        git push origin main
+        git push origin master
         
     - name: Summary
       run: |
