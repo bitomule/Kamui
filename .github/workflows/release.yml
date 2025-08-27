@@ -43,6 +43,11 @@ jobs:
     - name: Download dependencies
       run: go mod download
       
+    - name: Create clean bin directory
+      run: |
+        rm -rf bin
+        mkdir -p bin
+      
     - name: Build for Linux
       run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ steps.tag.outputs.tag }} -X main.commit=${{ github.sha }}" -o bin/kam-linux-amd64 ./cmd/kam
       
