@@ -1,8 +1,10 @@
 class Kamui < Formula
   desc "🎯 Advanced session manager for Claude Code with automatic status line integration"
   homepage "https://github.com/bitomule/kamui"
-  head "https://github.com/bitomule/kamui.git", branch: "main"
+  url "https://github.com/bitomule/kamui/archive/refs/tags/v0.0.1.tar.gz"
+  sha256 :no_check # Skip checksum for now, auto-generated releases
   license "MIT"
+  head "https://github.com/bitomule/kamui.git", branch: "main"
 
   depends_on "go" => :build
 
@@ -11,7 +13,8 @@ class Kamui < Formula
     ldflags = %W[
       -s -w
       -X main.version=#{version}
-      -X main.commit=#{Utils.git_short_head}
+      -X main.commit=#{stable.specs[:revision] || "unknown"}
+      -X main.date=#{time.iso8601}
     ]
     
     system "go", "build", *std_go_args(ldflags: ldflags), "./cmd/kam"
