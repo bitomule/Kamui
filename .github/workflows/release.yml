@@ -100,11 +100,10 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         
     - name: Update Homebrew formula
-      uses: dawidd6/action-homebrew-bump-formula@v3
+      uses: mislav/bump-homebrew-formula-action@v3
       with:
-        token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-        tap: bitomule/homebrew-tap
-        formula: kamui
-        tag: ${{ steps.tag.outputs.tag }}
-        revision: ${{ github.sha }}
+        formula-name: kamui
+        homebrew-tap: bitomule/homebrew-tap
+      env:
+        COMMITTER_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
       continue-on-error: true
