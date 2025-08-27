@@ -1,10 +1,10 @@
-# 🎯 Kamui - Advanced Session Manager
+# 🎯 Kamui 神威 - Advanced Session Manager
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-%3E%3D1.19-blue.svg)](https://golang.org/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey.svg)]()
 
-**Kamui is an advanced session manager for Claude Code** with automatic status line integration and project-local session isolation.
+**Kamui 神威 is an advanced session manager for Claude Code** with automatic status line integration and project-local session isolation.
 
 ## Features
 
