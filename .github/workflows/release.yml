@@ -36,17 +36,20 @@ jobs:
         path: |
           ~/.cache/go-build
           ~/go/pkg/mod
-        key: ${{ runner.os }}-go-release-${{ hashFiles('**/go.sum') }}
+        key: ${{ runner.os }}-go-release-${{ github.sha }}-${{ hashFiles('**/go.sum') }}
         restore-keys: |
+          ${{ runner.os }}-go-release-${{ github.sha }}-
           ${{ runner.os }}-go-release-
           
     - name: Download dependencies
       run: go mod download
       
-    - name: Create clean bin directory
+    - name: Clean build environment
       run: |
         rm -rf bin
         mkdir -p bin
+        go clean -cache
+        go clean -modcache || true
       
     - name: Build for Linux
       run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ steps.tag.outputs.tag }} -X main.commit=${{ github.sha }}" -o bin/kam-linux-amd64 ./cmd/kam
@@ -80,6 +83,8 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         name: Release ${{ steps.tag.outputs.tag }}
+        draft: false
+        prerelease: false
         body: |
           🎯 **Kamui** - Advanced session manager for Claude Code
           

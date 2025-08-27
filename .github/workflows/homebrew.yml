@@ -3,6 +3,12 @@ name: Update Homebrew Formula
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to process'
+        required: true
+        default: 'v0.0.1'
 
 jobs:
   homebrew:
@@ -17,8 +23,14 @@ jobs:
     - name: Get release info
       id: release
       run: |
-        echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-        echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          TAG="${{ inputs.tag }}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+        else
+          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        fi
         
     - name: Download release tarball and calculate SHA256
       id: checksum
@@ -33,6 +45,11 @@ jobs:
         
     - name: Clone homebrew-tap repository
       run: |
+        if [ -z "${{ secrets.HOMEBREW_TAP_TOKEN }}" ]; then
+          echo "❌ HOMEBREW_TAP_TOKEN secret is not set"
+          echo "Please add the HOMEBREW_TAP_TOKEN secret to the repository settings"
+          exit 1
+        fi
         git clone https://${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/bitomule/homebrew-tap.git
         cd homebrew-tap
         git config user.name "github-actions[bot]"
