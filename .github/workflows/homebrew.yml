@@ -82,7 +82,7 @@ jobs:
               -X main.date=#{time.iso8601}
             ]
             
-            system "go", "build", *std_go_args(ldflags: ldflags, output: bin/"kam"), "./cmd/kam"
+            system "go", "build", "-ldflags", ldflags.join(" "), "-o", bin/"kam", "./cmd/kam"
           end
 
           def caveats
