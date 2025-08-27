@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: 1.22
+        
+    - name: Get tag name
+      id: tag
+      run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-release-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-release-
+          
+    - name: Download dependencies
+      run: go mod download
+      
+    - name: Build for Linux
+      run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ steps.tag.outputs.tag }} -X main.commit=${{ github.sha }}" -o bin/kam-linux-amd64 ./cmd/kam
+      
+    - name: Build for macOS Intel
+      run: CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ steps.tag.outputs.tag }} -X main.commit=${{ github.sha }}" -o bin/kam-darwin-amd64 ./cmd/kam
+      
+    - name: Build for macOS Apple Silicon
+      run: CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w -X main.version=${{ steps.tag.outputs.tag }} -X main.commit=${{ github.sha }}" -o bin/kam-darwin-arm64 ./cmd/kam
+      
+    - name: Build for Windows
+      run: CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ steps.tag.outputs.tag }} -X main.commit=${{ github.sha }}" -o bin/kam-windows-amd64.exe ./cmd/kam
+      
+    - name: Create checksums
+      run: |
+        cd bin
+        sha256sum * > checksums.txt
+        
+    - name: Generate changelog
+      id: changelog
+      run: |
+        if git describe --tags --abbrev=0 HEAD^ >/dev/null 2>&1; then
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD^)..HEAD >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        else
+          echo "changelog=Initial release" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Create Release
+      uses: ncipollo/create-release@v1
+      with:
+        tag: ${{ steps.tag.outputs.tag }}
+        name: Release ${{ steps.tag.outputs.tag }}
+        body: |
+          🎯 **Kamui** - Advanced session manager for Claude Code
+          
+          ## What's Changed
+          ${{ steps.changelog.outputs.changelog }}
+          
+          ## Installation
+          
+          ### Homebrew (macOS/Linux)
+          ```bash
+          brew install bitomule/tap/kamui
+          ```
+          
+          ### Manual Download
+          Download the appropriate binary for your platform from the assets below:
+          - **Linux**: `kam-linux-amd64`
+          - **macOS Intel**: `kam-darwin-amd64` 
+          - **macOS Apple Silicon**: `kam-darwin-arm64`
+          - **Windows**: `kam-windows-amd64.exe`
+          
+          ## Quick Start
+          ```bash
+          kam MyProject    # Create/resume a session
+          kam             # Interactive session picker  
+          kam setup       # Configure Claude Code integration
+          ```
+          
+          ## Requirements
+          - Claude Code CLI must be installed
+          - Download from: https://claude.ai/code
+          
+          **Full Changelog**: https://github.com/bitomule/kamui/commits/${{ steps.tag.outputs.tag }}
+        artifacts: "bin/*"
+        draft: false
+        prerelease: false
+        token: ${{ secrets.GITHUB_TOKEN }}
