@@ -119,5 +119,3 @@ jobs:
           **Full Changelog**: https://github.com/bitomule/kamui/commits/${{ steps.tag.outputs.tag }}
         files: bin/*
         token: ${{ secrets.GITHUB_TOKEN }}
-        draft: false
-        prerelease: false
