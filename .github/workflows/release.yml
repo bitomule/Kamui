@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  actions: read
+  id-token: write
 
 jobs:
   release:
@@ -71,7 +73,6 @@ jobs:
         
     - name: Create Release
       uses: softprops/action-gh-release@v2
-      if: github.ref_type == 'tag'
       with:
         name: Release ${{ steps.tag.outputs.tag }}
         body: |
@@ -106,8 +107,7 @@ jobs:
           - Download from: https://claude.ai/code
           
           **Full Changelog**: https://github.com/bitomule/kamui/commits/${{ steps.tag.outputs.tag }}
-        files: |
-          bin/*
-          bin/checksums.txt
+        files: bin/*
+        token: ${{ secrets.GITHUB_TOKEN }}
         draft: false
         prerelease: false
