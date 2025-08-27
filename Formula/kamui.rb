@@ -1,20 +1,22 @@
 class Kamui < Formula
   desc "🎯 Advanced session manager for Claude Code with automatic status line integration"
   homepage "https://github.com/bitomule/kamui"
-  url "https://github.com/bitomule/kamui.git",
-      tag:      "v1.0.0",
-      revision: "d54e212a1b8c8f3e9d4f5a6b7c8d9e0f1a2b3c4d"
-  license "MIT"
   head "https://github.com/bitomule/kamui.git", branch: "main"
+  license "MIT"
 
   depends_on "go" => :build
-  depends_on "node" => :recommended
 
   def install
-    system "go", "build", "-ldflags", "-s -w", "-o", "kam", "cmd/kam/main.go"
-    bin.install "kam"
+    # Build from source with version info
+    ldflags = %W[
+      -s -w
+      -X main.version=#{version}
+      -X main.commit=#{Utils.git_short_head}
+    ]
+    
+    system "go", "build", *std_go_args(ldflags: ldflags), "./cmd/kam"
 
-    # Generate shell completions
+    # Generate shell completions if supported
     generate_completions_from_executable(bin/"kam", "completion")
   end
 
