@@ -60,9 +60,6 @@ jobs:
     - name: Build for macOS Apple Silicon
       run: CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w -X main.version=${{ steps.tag.outputs.tag }} -X main.commit=${{ github.sha }}" -o bin/kam-darwin-arm64 ./cmd/kam
       
-    - name: Build for Windows
-      run: CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ steps.tag.outputs.tag }} -X main.commit=${{ github.sha }}" -o bin/kam-windows-amd64.exe ./cmd/kam
-      
     - name: Create checksums
       run: |
         cd bin
@@ -103,7 +100,6 @@ jobs:
           - **Linux**: `kam-linux-amd64`
           - **macOS Intel**: `kam-darwin-amd64` 
           - **macOS Apple Silicon**: `kam-darwin-arm64`
-          - **Windows**: `kam-windows-amd64.exe`
           
           ## Quick Start
           ```bash
