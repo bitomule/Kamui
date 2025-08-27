@@ -1,0 +1,119 @@
+name: Update Homebrew Formula
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  homebrew:
+    name: Update Homebrew Tap
+    runs-on: ubuntu-latest
+    if: github.event.release.prerelease != true
+    
+    steps:
+    - name: Checkout Kamui repo
+      uses: actions/checkout@v4
+      
+    - name: Get release info
+      id: release
+      run: |
+        echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        
+    - name: Download release tarball and calculate SHA256
+      id: checksum
+      run: |
+        # Download the tarball
+        curl -sL "https://github.com/bitomule/kamui/archive/refs/tags/${{ steps.release.outputs.tag }}.tar.gz" -o release.tar.gz
+        
+        # Calculate SHA256
+        sha256=$(shasum -a 256 release.tar.gz | cut -d' ' -f1)
+        echo "sha256=$sha256" >> $GITHUB_OUTPUT
+        echo "Calculated SHA256: $sha256"
+        
+    - name: Clone homebrew-tap repository
+      run: |
+        git clone https://${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/bitomule/homebrew-tap.git
+        cd homebrew-tap
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        
+    - name: Update kamui.rb formula
+      run: |
+        cd homebrew-tap
+        
+        # Create the formula content
+        cat > kamui.rb << 'EOF'
+        class Kamui < Formula
+          desc "🎯 Advanced session manager for Claude Code with automatic status line integration"
+          homepage "https://github.com/bitomule/kamui"
+          url "https://github.com/bitomule/kamui/archive/refs/tags/${{ steps.release.outputs.tag }}.tar.gz"
+          sha256 "${{ steps.checksum.outputs.sha256 }}"
+          license "MIT"
+          head "https://github.com/bitomule/kamui.git", branch: "main"
+
+          depends_on "go" => :build
+
+          def install
+            # Build from source with version info
+            ldflags = %W[
+              -s -w
+              -X main.version=${{ steps.release.outputs.version }}
+              -X main.commit=${{ github.sha }}
+              -X main.date=#{time.iso8601}
+            ]
+            
+            system "go", "build", *std_go_args(ldflags: ldflags), "./cmd/kam"
+
+            # Generate shell completions if supported
+            generate_completions_from_executable(bin/"kam", "completion")
+          end
+
+          def caveats
+            <<~EOS
+              🎯 Kamui is ready! 
+
+              Quick start:
+                kam MyProject          # Create/resume a session
+                kam                   # Interactive session picker
+                kam setup            # Configure Claude Code integration
+
+              Requirements:
+                • Claude Code CLI must be installed
+                • Download from: https://claude.ai/code
+
+              The status line will be configured automatically on first use.
+            EOS
+          end
+
+          test do
+            system "#{bin}/kam", "--version"
+            system "#{bin}/kam", "--help"
+          end
+        end
+        EOF
+        
+    - name: Commit and push to homebrew-tap
+      run: |
+        cd homebrew-tap
+        
+        # Check if there are changes to commit
+        if git diff --quiet; then
+          echo "No changes to commit"
+          exit 0
+        fi
+        
+        git add kamui.rb
+        git commit -m "Update kamui formula to ${{ steps.release.outputs.tag }}
+        
+        - Updated to version ${{ steps.release.outputs.version }}
+        - SHA256: ${{ steps.checksum.outputs.sha256 }}
+        - Automated update from release workflow"
+        
+        git push origin main
+        
+    - name: Summary
+      run: |
+        echo "✅ Successfully updated Homebrew formula for kamui ${{ steps.release.outputs.tag }}"
+        echo "🍺 Users can now install with: brew install bitomule/tap/kamui"
+        echo "📦 SHA256: ${{ steps.checksum.outputs.sha256 }}"
