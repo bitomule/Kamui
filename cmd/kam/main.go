@@ -1,4 +1,4 @@
-// Package main provides the AGX command-line interface
+// Package main provides the Kamui command-line interface
 package main
 
 import (
@@ -178,7 +178,7 @@ func runSession(_ *cobra.Command, args []string) error {
 var setupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "Setup Claude Code integration",
-	Long:  "Configures Claude Code to display AGX session status automatically",
+	Long:  "Configures Claude Code to display Kamui session status automatically",
 	RunE: func(_ *cobra.Command, _ []string) error {
 		return setupClaudeIntegration()
 	},
@@ -299,7 +299,7 @@ func executeClaudeSession(_ *session.Manager, sessionData *types.Session) error 
 		return fmt.Errorf("failed to change to project directory: %w", err)
 	}
 
-	// Set up AGX environment variables
+	// Set up Kamui environment variables
 	env := os.Environ()
 
 	// Short Claude session ID for display
@@ -343,7 +343,7 @@ func executeClaudeSession(_ *session.Manager, sessionData *types.Session) error 
 	return nil
 }
 
-// setupClaudeIntegration configures Claude Code to use AGX status line
+// setupClaudeIntegration configures Claude Code to use Kamui status line
 func setupClaudeIntegration() error {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -361,7 +361,7 @@ func setupClaudeIntegration() error {
 		return fmt.Errorf("failed to create .claude directory: %w", err)
 	}
 
-	// Install AGX status line script
+	// Install Kamui status line script
 	if err := installStatusLineScript(statusLineScript); err != nil {
 		return fmt.Errorf("failed to install status line script: %w", err)
 	}
@@ -378,7 +378,7 @@ func setupClaudeIntegration() error {
 	return nil
 }
 
-// installStatusLineScript creates the AGX status line script
+// installStatusLineScript creates the Kamui status line script
 func installStatusLineScript(scriptPath string) error {
 	statusLineContent := `#!/usr/bin/env node
 
@@ -455,7 +455,7 @@ main();`
 	return nil
 }
 
-// configureClaudeSettings updates Claude Code settings to use AGX status line
+// configureClaudeSettings updates Claude Code settings to use Kamui status line
 func configureClaudeSettings(settingsFile, scriptPath string) error {
 	var settings map[string]interface{}
 
