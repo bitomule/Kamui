@@ -98,3 +98,13 @@ jobs:
           **Full Changelog**: https://github.com/bitomule/kamui/commits/${{ steps.tag.outputs.tag }}
         files: bin/*
         token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Update Homebrew formula
+      uses: dawidd6/action-homebrew-bump-formula@v3
+      with:
+        token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        tap: bitomule/homebrew-tap
+        formula: kamui
+        tag: ${{ steps.tag.outputs.tag }}
+        revision: ${{ github.sha }}
+      continue-on-error: true
