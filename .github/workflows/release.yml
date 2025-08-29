@@ -103,7 +103,7 @@ jobs:
       uses: mislav/bump-homebrew-formula-action@v3
       with:
         formula-name: kamui
-        formula-path: kamui.rb
+        formula-path: Formula/kamui.rb
         homebrew-tap: bitomule/homebrew-tap
       env:
         COMMITTER_TOKEN: ${{ secrets.COMMITTER_TOKEN }}
