@@ -240,4 +240,3 @@ func TestClientInterface(t *testing.T) {
 	// This test ensures the interface contract is maintained
 	// If Client doesn't implement all interface methods, this will fail to compile
 }
-

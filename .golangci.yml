@@ -80,6 +80,11 @@ issues:
     - linters:
         - staticcheck
       text: "SA4010.*this result of append is never used"
+    
+    # Ignore errcheck for process cleanup where errors are not actionable
+    - linters:
+        - errcheck
+      text: "Error return value of.*Kill.*is not checked"
       
   max-issues-per-linter: 0
   max-same-issues: 0

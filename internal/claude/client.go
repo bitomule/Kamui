@@ -270,29 +270,29 @@ func (c *Client) LaunchClaudeInteractively(workingDir string, sessionName string
 	if err != nil {
 		return fmt.Errorf("failed to spawn monitor process: %w", err)
 	}
-	
+
 	// Set up cleanup timer for monitor process (1 minute timeout)
 	go func() {
 		time.Sleep(1 * time.Minute)
 		if monitorCmd.Process != nil {
-			monitorCmd.Process.Kill()
+			_ = monitorCmd.Process.Kill() // Kill errors are not actionable in cleanup
 		}
 	}()
-	
+
 	// Run Claude in main process (blocking with full terminal access)
 	cmd := exec.Command(c.claudePath)
 	cmd.Dir = workingDir
 	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout  
+	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	
+
 	// Set up Claude environment for hooks
 	env := os.Environ()
 	env = append(env, fmt.Sprintf("KAMUI_SESSION_ID=%s", sessionName))
 	env = append(env, "KAMUI_ACTIVE=1")
 	env = append(env, fmt.Sprintf("KAMUI_PROJECT_NAME=%s", filepath.Base(workingDir)))
 	cmd.Env = env
-	
+
 	// This blocks until Claude exits - main process handles user interaction
 	if err := cmd.Run(); err != nil {
 		return types.NewClaudeError(
@@ -301,7 +301,7 @@ func (c *Client) LaunchClaudeInteractively(workingDir string, sessionName string
 			err,
 		)
 	}
-	
+
 	return nil
 }
 
@@ -312,73 +312,17 @@ func (c *Client) spawnMonitorProcess(sessionName, workingDir string) (*exec.Cmd,
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Spawn monitor subprocess with no stdio (truly background)
 	cmd := exec.Command(executable, "monitor", sessionName, workingDir)
 	cmd.Dir = workingDir
 	// Don't attach stdin/stdout/stderr - runs in background
-	
+
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
-	
+
 	return cmd, nil
 }
 
-
 // monitorForSession monitors filesystem for new Claude sessions
-func (c *Client) monitorForSession(workingDir string, beforeSessions []string, timeout time.Duration) (string, error) {
-	start := time.Now()
-	
-	for time.Since(start) < timeout {
-		// Check for new sessions
-		afterSessions, err := c.DiscoverExistingSessions(workingDir)
-		if err != nil {
-			time.Sleep(1 * time.Second)
-			continue // Keep trying
-		}
-		
-		// Find any new session
-		for _, sessionID := range afterSessions {
-			found := false
-			for _, oldSession := range beforeSessions {
-				if sessionID == oldSession {
-					found = true
-					break
-				}
-			}
-			if !found {
-				// Found new session
-				return sessionID, nil
-			}
-		}
-		
-		// Wait before checking again
-		time.Sleep(1 * time.Second)
-	}
-	
-	// Timeout reached
-	return "", types.NewClaudeError(
-		types.ErrCodeClaudeStartFailed,
-		"timeout monitoring for Claude session creation",
-		nil,
-	)
-}
-
-
-// getSessionFilePath returns the path to a Claude session file
-func (c *Client) getSessionFilePath(workingDir, sessionID string) (string, error) {
-	// Resolve canonical path to handle symlinks like /tmp -> /private/tmp
-	canonicalPath, err := filepath.EvalSymlinks(workingDir)
-	if err != nil {
-		// If we can't resolve symlinks, use the original path
-		canonicalPath = workingDir
-	}
-
-	encodedPath := strings.ReplaceAll(canonicalPath, "/", "-")
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(homeDir, ".claude", "projects", encodedPath, sessionID+".jsonl"), nil
-}

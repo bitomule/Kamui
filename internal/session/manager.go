@@ -14,7 +14,7 @@ import (
 
 // Manager handles session lifecycle and coordination
 type Manager struct {
-	storage      *storage.Storage
+	storage      storage.Interface
 	claudeClient claude.ClientInterface
 	projectPath  string
 }
@@ -44,9 +44,12 @@ func NewForPath(projectPath string) (*Manager, error) {
 	return NewWithClient(projectPath, claudeClient)
 }
 
-// NewWithClient creates a new session manager with a custom Claude client (useful for testing)
 func NewWithClient(projectPath string, claudeClient claude.ClientInterface) (*Manager, error) {
-	// Verify project path exists
+	storage := storage.New(projectPath)
+	return NewWithDependencies(projectPath, storage, claudeClient)
+}
+
+func NewWithDependencies(projectPath string, storageImpl storage.Interface, claudeClient claude.ClientInterface) (*Manager, error) {
 	if _, err := os.Stat(projectPath); os.IsNotExist(err) {
 		return nil, types.NewStorageError(
 			types.ErrCodeProjectNotFound,
@@ -55,7 +58,6 @@ func NewWithClient(projectPath string, claudeClient claude.ClientInterface) (*Ma
 		)
 	}
 
-	// Get absolute path
 	absPath, err := filepath.Abs(projectPath)
 	if err != nil {
 		return nil, types.NewStorageError(
@@ -65,10 +67,8 @@ func NewWithClient(projectPath string, claudeClient claude.ClientInterface) (*Ma
 		)
 	}
 
-	storage := storage.New(absPath)
-
 	return &Manager{
-		storage:      storage,
+		storage:      storageImpl,
 		claudeClient: claudeClient,
 		projectPath:  absPath,
 	}, nil
@@ -109,7 +109,7 @@ func (m *Manager) CreateOrResumeSession(sessionName string) (*types.Session, boo
 		shouldStartFreshClaude = true
 	}
 
-	// Set up Claude session  
+	// Set up Claude session
 	if shouldStartFreshClaude {
 		if err := m.setupClaudeSession(session, true); err != nil {
 			return nil, false, fmt.Errorf("failed to setup Claude session: %w", err)

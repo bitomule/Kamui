@@ -16,7 +16,8 @@ func TestNew(t *testing.T) {
 	projectPath := "/tmp/test-project"
 	storage := New(projectPath)
 
-	homeDir, _ := os.UserHomeDir()
+	homeDir, err := os.UserHomeDir()
+	require.NoError(t, err)
 	expectedSessionsDir := filepath.Join(homeDir, ".claude", "kamui-sessions")
 
 	assert.Equal(t, projectPath, storage.projectPath)
@@ -24,34 +25,29 @@ func TestNew(t *testing.T) {
 }
 
 func TestInitialize(t *testing.T) {
-	// Create temporary directory for testing
 	tempDir := t.TempDir()
-	storage := New(tempDir)
+	sessionsDir := filepath.Join(tempDir, ".claude", "kamui-sessions")
+	storage := NewWithSessionsDir(tempDir, sessionsDir)
 
-	// Initialize should create the sessions directory
 	err := storage.Initialize()
 	require.NoError(t, err)
 
-	// Verify directory was created
-	sessionsDir := filepath.Join(tempDir, ".claude", "kamui-sessions")
 	info, err := os.Stat(sessionsDir)
 	require.NoError(t, err)
 	assert.True(t, info.IsDir())
-
-	// Check permissions (should be 0700)
 	assert.Equal(t, os.FileMode(0o700), info.Mode().Perm())
 }
 
 func TestSessionExists(t *testing.T) {
 	tempDir := t.TempDir()
-	storage := New(tempDir)
+	sessionsDir := filepath.Join(tempDir, ".claude", "kamui-sessions")
+	storage := NewWithSessionsDir(tempDir, sessionsDir)
 
 	// Session should not exist initially
 	exists := storage.SessionExists("test-session")
 	assert.False(t, exists)
 
 	// Create session directory and file
-	sessionsDir := filepath.Join(tempDir, ".claude", "kamui-sessions")
 	require.NoError(t, os.MkdirAll(sessionsDir, 0o700))
 
 	sessionFile := filepath.Join(sessionsDir, "test-session.json")
@@ -64,7 +60,8 @@ func TestSessionExists(t *testing.T) {
 
 func TestCreateSession(t *testing.T) {
 	tempDir := t.TempDir()
-	storage := New(tempDir)
+	sessionsDir := filepath.Join(tempDir, ".claude", "kamui-sessions")
+	storage := NewWithSessionsDir(tempDir, sessionsDir)
 
 	sessionID := "test-session"
 	projectPath := tempDir
@@ -90,7 +87,8 @@ func TestCreateSession(t *testing.T) {
 
 func TestSaveAndLoadSession(t *testing.T) {
 	tempDir := t.TempDir()
-	storage := New(tempDir)
+	sessionsDir := filepath.Join(tempDir, ".claude", "kamui-sessions")
+	storage := NewWithSessionsDir(tempDir, sessionsDir)
 
 	// Create a test session
 	originalSession, err := storage.CreateSession("test-session", tempDir)
@@ -123,7 +121,8 @@ func TestSaveAndLoadSession(t *testing.T) {
 
 func TestSaveSessionAtomic(t *testing.T) {
 	tempDir := t.TempDir()
-	storage := New(tempDir)
+	sessionsDir := filepath.Join(tempDir, ".claude", "kamui-sessions")
+	storage := NewWithSessionsDir(tempDir, sessionsDir)
 
 	session, err := storage.CreateSession("test-session", tempDir)
 	require.NoError(t, err)
@@ -133,7 +132,6 @@ func TestSaveSessionAtomic(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify the temp file was cleaned up
-	sessionsDir := filepath.Join(tempDir, ".claude", "kamui-sessions")
 	entries, err := os.ReadDir(sessionsDir)
 	require.NoError(t, err)
 
@@ -144,7 +142,8 @@ func TestSaveSessionAtomic(t *testing.T) {
 
 func TestLoadSessionNotFound(t *testing.T) {
 	tempDir := t.TempDir()
-	storage := New(tempDir)
+	sessionsDir := filepath.Join(tempDir, ".claude", "kamui-sessions")
+	storage := NewWithSessionsDir(tempDir, sessionsDir)
 
 	// Try to load non-existent session
 	_, err := storage.LoadSession("non-existent")
@@ -158,7 +157,8 @@ func TestLoadSessionNotFound(t *testing.T) {
 
 func TestListSessions(t *testing.T) {
 	tempDir := t.TempDir()
-	storage := New(tempDir)
+	sessionsDir := filepath.Join(tempDir, ".claude", "kamui-sessions")
+	storage := NewWithSessionsDir(tempDir, sessionsDir)
 
 	// Initially should return empty slice
 	sessions, err := storage.ListSessions()
@@ -192,7 +192,8 @@ func TestListSessions(t *testing.T) {
 
 func TestDeleteSession(t *testing.T) {
 	tempDir := t.TempDir()
-	storage := New(tempDir)
+	sessionsDir := filepath.Join(tempDir, ".claude", "kamui-sessions")
+	storage := NewWithSessionsDir(tempDir, sessionsDir)
 
 	// Create and save a session
 	session, err := storage.CreateSession("test-session", tempDir)
@@ -215,7 +216,8 @@ func TestDeleteSession(t *testing.T) {
 
 func TestDeleteSessionNotFound(t *testing.T) {
 	tempDir := t.TempDir()
-	storage := New(tempDir)
+	sessionsDir := filepath.Join(tempDir, ".claude", "kamui-sessions")
+	storage := NewWithSessionsDir(tempDir, sessionsDir)
 
 	// Try to delete non-existent session
 	err := storage.DeleteSession("non-existent")
@@ -229,7 +231,8 @@ func TestDeleteSessionNotFound(t *testing.T) {
 
 func TestUpdateSessionAccess(t *testing.T) {
 	tempDir := t.TempDir()
-	storage := New(tempDir)
+	sessionsDir := filepath.Join(tempDir, ".claude", "kamui-sessions")
+	storage := NewWithSessionsDir(tempDir, sessionsDir)
 
 	// Create and save a session
 	session, err := storage.CreateSession("test-session", tempDir)
@@ -260,10 +263,9 @@ func TestGetProjectPath(t *testing.T) {
 }
 
 func TestGetSessionsPath(t *testing.T) {
-	projectPath := "/tmp/test-project"
-	storage := New(projectPath)
+	tempDir := t.TempDir()
+	sessionsDir := filepath.Join(tempDir, ".claude", "kamui-sessions")
+	storage := NewWithSessionsDir(tempDir, sessionsDir)
 
-	homeDir, _ := os.UserHomeDir()
-	expectedPath := filepath.Join(homeDir, ".claude", "kamui-sessions")
-	assert.Equal(t, expectedPath, storage.GetSessionsPath())
+	assert.Equal(t, sessionsDir, storage.GetSessionsPath())
 }

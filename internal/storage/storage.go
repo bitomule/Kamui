@@ -11,22 +11,34 @@ import (
 	"github.com/bitomule/kamui/pkg/types"
 )
 
-// Storage manages session file operations
-type Storage struct {
-	projectPath string
-	sessionsDir string // Global sessions directory in ~/.claude/kamui-sessions/
+// Interface defines the contract for session storage operations
+type Interface interface {
+	Initialize() error
+	SaveSession(session *types.Session) error
+	LoadSession(sessionID string) (*types.Session, error)
+	SessionExists(sessionID string) bool
+	ListSessions() ([]string, error)
+	DeleteSession(sessionID string) error
+	CreateSession(sessionID, projectPath string) (*types.Session, error)
+	UpdateSessionAccess(sessionID string) error
+	GetProjectPath() string
+	GetSessionsPath() string
 }
 
-// New creates a new Storage instance for the given project path
+type Storage struct {
+	projectPath string
+	sessionsDir string
+}
+
 func New(projectPath string) *Storage {
-	// Use global sessions directory in user's home
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		// Fallback to current working directory if home directory isn't accessible
 		homeDir = "."
 	}
-	sessionsDir := filepath.Join(homeDir, ".claude", "kamui-sessions")
+	return NewWithSessionsDir(projectPath, filepath.Join(homeDir, ".claude", "kamui-sessions"))
+}
 
+func NewWithSessionsDir(projectPath, sessionsDir string) *Storage {
 	return &Storage{
 		projectPath: projectPath,
 		sessionsDir: sessionsDir,
@@ -200,7 +212,18 @@ func (s *Storage) CreateSession(sessionID, projectPath string) (*types.Session, 
 		},
 
 		Claude: types.ClaudeInfo{
-			SessionID: "", // Will be set when Claude session is created
+			SessionID: "",
+		},
+
+		Lifecycle: types.LifecycleInfo{
+			State: types.SessionStateActive,
+			StateHistory: []types.StateChange{
+				{
+					State:     types.SessionStateActive,
+					Timestamp: now,
+					Reason:    "session_created",
+				},
+			},
 		},
 	}
 

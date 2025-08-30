@@ -1,7 +1,6 @@
 // Package claude provides integration with Claude Code CLI
 package claude
 
-
 // ClientInterface defines the methods required for Claude Code integration
 // This interface allows for easy mocking in unit tests
 type ClientInterface interface {

@@ -178,17 +178,17 @@ func runMonitor(sessionName, workingDir string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create Claude client: %w", err)
 	}
-	
+
 	// Get baseline sessions before monitoring
 	beforeSessions, err := claudeClient.DiscoverExistingSessions(workingDir)
 	if err != nil {
 		return fmt.Errorf("failed to discover existing sessions: %w", err)
 	}
-	
+
 	// Monitor for new session creation (60 second timeout)
 	timeout := 60 * time.Second
 	start := time.Now()
-	
+
 	for time.Since(start) < timeout {
 		// Check for new sessions
 		afterSessions, err := claudeClient.DiscoverExistingSessions(workingDir)
@@ -196,7 +196,7 @@ func runMonitor(sessionName, workingDir string) error {
 			time.Sleep(1 * time.Second)
 			continue // Keep trying
 		}
-		
+
 		// Find any new session
 		for _, sessionID := range afterSessions {
 			found := false
@@ -211,16 +211,16 @@ func runMonitor(sessionName, workingDir string) error {
 				if err := saveSessionMapping(sessionName, sessionID, workingDir); err != nil {
 					return fmt.Errorf("failed to save session mapping: %w", err)
 				}
-				
+
 				// Session mapping saved silently
 				return nil // Exit monitor process
 			}
 		}
-		
+
 		// Wait before checking again
 		time.Sleep(1 * time.Second)
 	}
-	
+
 	// Timeout reached
 	return fmt.Errorf("timeout waiting for Claude session creation")
 }
@@ -229,7 +229,7 @@ func runMonitor(sessionName, workingDir string) error {
 func saveSessionMapping(sessionName, claudeSessionID, workingDir string) error {
 	// Create storage instance
 	storage := storage.New(workingDir)
-	
+
 	// Create or load session
 	var session *types.Session
 	if storage.SessionExists(sessionName) {
@@ -239,19 +239,19 @@ func saveSessionMapping(sessionName, claudeSessionID, workingDir string) error {
 			return err
 		}
 	} else {
-		var err error  
+		var err error
 		session, err = storage.CreateSession(sessionName, workingDir)
 		if err != nil {
 			return err
 		}
 	}
-	
+
 	// Update Claude session info
 	session.Claude.SessionID = claudeSessionID
 	session.Claude.HasActiveContext = true
 	session.Claude.LastInteraction = time.Now()
 	session.LastModified = time.Now()
-	
+
 	// Save updated session
 	return storage.SaveSession(session)
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bitomule/kamui/internal/claude"
+	"github.com/bitomule/kamui/internal/storage"
 	"github.com/bitomule/kamui/pkg/types"
 )
 
@@ -110,8 +111,9 @@ func TestNewWithClientInvalidPath(t *testing.T) {
 func TestCreateOrResumeSession_NewSession(t *testing.T) {
 	tempDir := t.TempDir()
 	mockClient := &MockClaudeClient{}
+	testStorage := storage.NewWithSessionsDir(tempDir, filepath.Join(tempDir, ".claude", "kamui-sessions"))
 
-	manager, err := NewWithClient(tempDir, mockClient)
+	manager, err := NewWithDependencies(tempDir, testStorage, mockClient)
 	require.NoError(t, err)
 
 	sessionName := "new-session"
@@ -135,18 +137,19 @@ func TestCreateOrResumeSession_NewSession(t *testing.T) {
 func TestCreateOrResumeSession_ResumeExisting(t *testing.T) {
 	tempDir := t.TempDir()
 	mockClient := &MockClaudeClient{}
+	testStorage := storage.NewWithSessionsDir(tempDir, filepath.Join(tempDir, ".claude", "kamui-sessions"))
 
-	manager, err := NewWithClient(tempDir, mockClient)
+	manager, err := NewWithDependencies(tempDir, testStorage, mockClient)
 	require.NoError(t, err)
 
 	sessionName := "existing-session"
 	claudeSessionID := "claude-existing-123"
 
 	// Create existing session first
-	session, err := manager.storage.CreateSession(sessionName, tempDir)
+	session, err := testStorage.CreateSession(sessionName, tempDir)
 	require.NoError(t, err)
 	session.Claude.SessionID = claudeSessionID
-	err = manager.storage.SaveSession(session)
+	err = testStorage.SaveSession(session)
 	require.NoError(t, err)
 
 	// Mock expectations for resuming existing session
@@ -166,18 +169,19 @@ func TestCreateOrResumeSession_ResumeExisting(t *testing.T) {
 func TestCreateOrResumeSession_StoredSessionMissing(t *testing.T) {
 	tempDir := t.TempDir()
 	mockClient := &MockClaudeClient{}
+	testStorage := storage.NewWithSessionsDir(tempDir, filepath.Join(tempDir, ".claude", "kamui-sessions"))
 
-	manager, err := NewWithClient(tempDir, mockClient)
+	manager, err := NewWithDependencies(tempDir, testStorage, mockClient)
 	require.NoError(t, err)
 
 	sessionName := "session-with-missing-claude"
 	claudeSessionID := "claude-missing-123"
 
 	// Create existing session with a Claude session ID
-	session, err := manager.storage.CreateSession(sessionName, tempDir)
+	session, err := testStorage.CreateSession(sessionName, tempDir)
 	require.NoError(t, err)
 	session.Claude.SessionID = claudeSessionID
-	err = manager.storage.SaveSession(session)
+	err = testStorage.SaveSession(session)
 	require.NoError(t, err)
 
 	// Mock expectations - stored Claude session no longer exists
@@ -196,16 +200,17 @@ func TestCreateOrResumeSession_StoredSessionMissing(t *testing.T) {
 func TestGetSession(t *testing.T) {
 	tempDir := t.TempDir()
 	mockClient := &MockClaudeClient{}
+	testStorage := storage.NewWithSessionsDir(tempDir, filepath.Join(tempDir, ".claude", "kamui-sessions"))
 
-	manager, err := NewWithClient(tempDir, mockClient)
+	manager, err := NewWithDependencies(tempDir, testStorage, mockClient)
 	require.NoError(t, err)
 
 	sessionName := "test-session"
 
 	// Create and save a session
-	originalSession, err := manager.storage.CreateSession(sessionName, tempDir)
+	originalSession, err := testStorage.CreateSession(sessionName, tempDir)
 	require.NoError(t, err)
-	err = manager.storage.SaveSession(originalSession)
+	err = testStorage.SaveSession(originalSession)
 	require.NoError(t, err)
 
 	// Retrieve the session
@@ -219,8 +224,9 @@ func TestGetSession(t *testing.T) {
 func TestGetSessionNotFound(t *testing.T) {
 	tempDir := t.TempDir()
 	mockClient := &MockClaudeClient{}
+	testStorage := storage.NewWithSessionsDir(tempDir, filepath.Join(tempDir, ".claude", "kamui-sessions"))
 
-	manager, err := NewWithClient(tempDir, mockClient)
+	manager, err := NewWithDependencies(tempDir, testStorage, mockClient)
 	require.NoError(t, err)
 
 	_, err = manager.GetSession("nonexistent")
@@ -234,8 +240,9 @@ func TestGetSessionNotFound(t *testing.T) {
 func TestListSessions(t *testing.T) {
 	tempDir := t.TempDir()
 	mockClient := &MockClaudeClient{}
+	testStorage := storage.NewWithSessionsDir(tempDir, filepath.Join(tempDir, ".claude", "kamui-sessions"))
 
-	manager, err := NewWithClient(tempDir, mockClient)
+	manager, err := NewWithDependencies(tempDir, testStorage, mockClient)
 	require.NoError(t, err)
 
 	// Should be empty initially
@@ -246,9 +253,9 @@ func TestListSessions(t *testing.T) {
 	// Create some sessions
 	sessionNames := []string{"session1", "session2", "session3"}
 	for _, name := range sessionNames {
-		session, createErr := manager.storage.CreateSession(name, tempDir)
+		session, createErr := testStorage.CreateSession(name, tempDir)
 		require.NoError(t, createErr)
-		saveErr := manager.storage.SaveSession(session)
+		saveErr := testStorage.SaveSession(session)
 		require.NoError(t, saveErr)
 	}
 
@@ -271,16 +278,17 @@ func TestListSessions(t *testing.T) {
 func TestCompleteSession(t *testing.T) {
 	tempDir := t.TempDir()
 	mockClient := &MockClaudeClient{}
+	testStorage := storage.NewWithSessionsDir(tempDir, filepath.Join(tempDir, ".claude", "kamui-sessions"))
 
-	manager, err := NewWithClient(tempDir, mockClient)
+	manager, err := NewWithDependencies(tempDir, testStorage, mockClient)
 	require.NoError(t, err)
 
 	sessionName := "test-session"
 
 	// Create and save a session
-	session, err := manager.storage.CreateSession(sessionName, tempDir)
+	session, err := testStorage.CreateSession(sessionName, tempDir)
 	require.NoError(t, err)
-	err = manager.storage.SaveSession(session)
+	err = testStorage.SaveSession(session)
 	require.NoError(t, err)
 
 	// Complete the session
@@ -300,16 +308,17 @@ func TestCompleteSession(t *testing.T) {
 func TestDeleteSession(t *testing.T) {
 	tempDir := t.TempDir()
 	mockClient := &MockClaudeClient{}
+	testStorage := storage.NewWithSessionsDir(tempDir, filepath.Join(tempDir, ".claude", "kamui-sessions"))
 
-	manager, err := NewWithClient(tempDir, mockClient)
+	manager, err := NewWithDependencies(tempDir, testStorage, mockClient)
 	require.NoError(t, err)
 
 	sessionName := "test-session"
 
 	// Create and save a session
-	session, err := manager.storage.CreateSession(sessionName, tempDir)
+	session, err := testStorage.CreateSession(sessionName, tempDir)
 	require.NoError(t, err)
-	err = manager.storage.SaveSession(session)
+	err = testStorage.SaveSession(session)
 	require.NoError(t, err)
 
 	// Verify it exists
@@ -330,8 +339,9 @@ func TestDeleteSession(t *testing.T) {
 func TestGetProjectPath(t *testing.T) {
 	tempDir := t.TempDir()
 	mockClient := &MockClaudeClient{}
+	testStorage := storage.NewWithSessionsDir(tempDir, filepath.Join(tempDir, ".claude", "kamui-sessions"))
 
-	manager, err := NewWithClient(tempDir, mockClient)
+	manager, err := NewWithDependencies(tempDir, testStorage, mockClient)
 	require.NoError(t, err)
 
 	assert.Equal(t, tempDir, manager.GetProjectPath())
@@ -340,8 +350,9 @@ func TestGetProjectPath(t *testing.T) {
 func TestGetProjectName(t *testing.T) {
 	tempDir := t.TempDir()
 	mockClient := &MockClaudeClient{}
+	testStorage := storage.NewWithSessionsDir(tempDir, filepath.Join(tempDir, ".claude", "kamui-sessions"))
 
-	manager, err := NewWithClient(tempDir, mockClient)
+	manager, err := NewWithDependencies(tempDir, testStorage, mockClient)
 	require.NoError(t, err)
 
 	expectedName := filepath.Base(tempDir)
@@ -351,12 +362,13 @@ func TestGetProjectName(t *testing.T) {
 func TestGetClaudeCommand(t *testing.T) {
 	tempDir := t.TempDir()
 	mockClient := &MockClaudeClient{}
+	testStorage := storage.NewWithSessionsDir(tempDir, filepath.Join(tempDir, ".claude", "kamui-sessions"))
 
-	manager, err := NewWithClient(tempDir, mockClient)
+	manager, err := NewWithDependencies(tempDir, testStorage, mockClient)
 	require.NoError(t, err)
 
 	// Test with empty Claude session ID
-	session, err := manager.storage.CreateSession("test-session", tempDir)
+	session, err := testStorage.CreateSession("test-session", tempDir)
 	require.NoError(t, err)
 
 	command := manager.GetClaudeCommand(session)
