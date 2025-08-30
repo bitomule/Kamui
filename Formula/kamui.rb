@@ -1,7 +1,7 @@
 class Kamui < Formula
   desc "🎯 Advanced session manager for Claude Code with automatic status line integration"
   homepage "https://github.com/bitomule/kamui"
-  url "https://github.com/bitomule/kamui/archive/refs/tags/v0.0.1.tar.gz"
+  url "https://github.com/bitomule/kamui/archive/refs/tags/v0.0.3.tar.gz"
   sha256 :no_check # Skip checksum for now, auto-generated releases
   license "MIT"
   head "https://github.com/bitomule/kamui.git", branch: "main"
