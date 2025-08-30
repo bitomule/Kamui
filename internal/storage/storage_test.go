@@ -16,9 +16,11 @@ func TestNew(t *testing.T) {
 	projectPath := "/tmp/test-project"
 	storage := New(projectPath)
 
+	homeDir, _ := os.UserHomeDir()
+	expectedSessionsDir := filepath.Join(homeDir, ".claude", "kamui-sessions")
+
 	assert.Equal(t, projectPath, storage.projectPath)
-	assert.Equal(t, filepath.Join(projectPath, ".claude"), storage.kamuiDir)
-	assert.Equal(t, filepath.Join(projectPath, ".claude", "kamui-sessions"), storage.sessionsDir)
+	assert.Equal(t, expectedSessionsDir, storage.sessionsDir)
 }
 
 func TestInitialize(t *testing.T) {
@@ -70,13 +72,11 @@ func TestCreateSession(t *testing.T) {
 	session, err := storage.CreateSession(sessionID, projectPath)
 	require.NoError(t, err)
 
-	// Verify session properties
+	// Verify session properties (simplified structure)
 	assert.Equal(t, sessionID, session.SessionID)
 	assert.Equal(t, "1.0.0", session.Version)
-	assert.Equal(t, filepath.Base(projectPath), session.Project.Name)
 	assert.Equal(t, projectPath, session.Project.Path)
 	assert.Equal(t, projectPath, session.Project.WorkingDirectory)
-	assert.Equal(t, types.SessionStateActive, session.Lifecycle.State)
 
 	// Verify timestamps are recent
 	now := time.Now()
@@ -84,12 +84,8 @@ func TestCreateSession(t *testing.T) {
 	assert.True(t, session.LastAccessed.After(now.Add(-time.Minute)))
 	assert.True(t, session.LastModified.After(now.Add(-time.Minute)))
 
-	// Verify default values
-	assert.Equal(t, "claude-3-sonnet", session.Claude.ModelUsed)
-	assert.False(t, session.Claude.HasActiveContext)
-	assert.True(t, session.Metadata.IsDefault)
-	assert.Contains(t, session.Metadata.Tags, "development")
-	assert.True(t, session.Lifecycle.AutoCleanup.Enabled)
+	// Verify Claude session ID is initially empty
+	assert.Equal(t, "", session.Claude.SessionID)
 }
 
 func TestSaveAndLoadSession(t *testing.T) {
@@ -267,6 +263,7 @@ func TestGetSessionsPath(t *testing.T) {
 	projectPath := "/tmp/test-project"
 	storage := New(projectPath)
 
-	expectedPath := filepath.Join(projectPath, ".claude", "kamui-sessions")
+	homeDir, _ := os.UserHomeDir()
+	expectedPath := filepath.Join(homeDir, ".claude", "kamui-sessions")
 	assert.Equal(t, expectedPath, storage.GetSessionsPath())
 }

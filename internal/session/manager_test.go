@@ -78,9 +78,9 @@ func (m *MockClaudeClient) DiscoverNewestSession(workingDir string) (string, err
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockClaudeClient) StartFreshAndDiscoverSessionID(workingDir string) (string, error) {
-	args := m.Called(workingDir)
-	return args.String(0), args.Error(1)
+func (m *MockClaudeClient) LaunchClaudeInteractively(workingDir string, sessionName string) error {
+	args := m.Called(workingDir, sessionName)
+	return args.Error(0)
 }
 
 func TestNewWithClient(t *testing.T) {
@@ -115,23 +115,19 @@ func TestCreateOrResumeSession_NewSession(t *testing.T) {
 	require.NoError(t, err)
 
 	sessionName := "new-session"
-	claudeSessionID := "claude-123456"
 
 	// Mock expectations for new session (no existing sessions)
 	// HasSession should return false for the stored session check
 	mockClient.On("HasSession", "", tempDir).Return(false, nil).Maybe()
-	// StartFreshAndDiscoverSessionID should be called to create new session
-	mockClient.On("StartFreshAndDiscoverSessionID", tempDir).Return(claudeSessionID, nil)
+	// LaunchClaudeInteractively should be called to create new session
+	mockClient.On("LaunchClaudeInteractively", tempDir, sessionName).Return(nil)
 
-	session, err := manager.CreateOrResumeSession(sessionName)
+	session, claudeWasExecuted, err := manager.CreateOrResumeSession(sessionName)
 	require.NoError(t, err)
 
 	assert.Equal(t, sessionName, session.SessionID)
-	assert.Equal(t, claudeSessionID, session.Claude.SessionID)
-	assert.True(t, session.Claude.HasActiveContext)
-	assert.Equal(t, filepath.Base(tempDir), session.Project.Name)
+	assert.True(t, claudeWasExecuted) // New session should execute Claude
 	assert.Equal(t, tempDir, session.Project.Path)
-	assert.Equal(t, types.SessionStateActive, session.Lifecycle.State)
 
 	mockClient.AssertExpectations(t)
 }
@@ -156,10 +152,11 @@ func TestCreateOrResumeSession_ResumeExisting(t *testing.T) {
 	// Mock expectations for resuming existing session
 	mockClient.On("HasSession", claudeSessionID, tempDir).Return(true, nil)
 
-	resumedSession, err := manager.CreateOrResumeSession(sessionName)
+	resumedSession, claudeWasExecuted, err := manager.CreateOrResumeSession(sessionName)
 	require.NoError(t, err)
 
 	assert.Equal(t, sessionName, resumedSession.SessionID)
+	assert.False(t, claudeWasExecuted) // Existing session should not execute Claude again
 	assert.Equal(t, claudeSessionID, resumedSession.Claude.SessionID)
 	assert.True(t, resumedSession.LastAccessed.After(session.LastAccessed))
 
@@ -175,7 +172,6 @@ func TestCreateOrResumeSession_StoredSessionMissing(t *testing.T) {
 
 	sessionName := "session-with-missing-claude"
 	claudeSessionID := "claude-missing-123"
-	newClaudeSessionID := "claude-new-456"
 
 	// Create existing session with a Claude session ID
 	session, err := manager.storage.CreateSession(sessionName, tempDir)
@@ -186,13 +182,13 @@ func TestCreateOrResumeSession_StoredSessionMissing(t *testing.T) {
 
 	// Mock expectations - stored Claude session no longer exists
 	mockClient.On("HasSession", claudeSessionID, tempDir).Return(false, nil)
-	mockClient.On("StartFreshAndDiscoverSessionID", tempDir).Return(newClaudeSessionID, nil)
+	mockClient.On("LaunchClaudeInteractively", tempDir, sessionName).Return(nil)
 
-	resumedSession, err := manager.CreateOrResumeSession(sessionName)
+	resumedSession, claudeWasExecuted, err := manager.CreateOrResumeSession(sessionName)
 	require.NoError(t, err)
 
 	assert.Equal(t, sessionName, resumedSession.SessionID)
-	assert.Equal(t, newClaudeSessionID, resumedSession.Claude.SessionID)
+	assert.True(t, claudeWasExecuted) // Should execute Claude since stored session was missing
 
 	mockClient.AssertExpectations(t)
 }
