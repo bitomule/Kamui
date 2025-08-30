@@ -75,7 +75,8 @@ func NewWithClient(projectPath string, claudeClient claude.ClientInterface) (*Ma
 }
 
 // CreateOrResumeSession creates a new session or resumes an existing one
-func (m *Manager) CreateOrResumeSession(sessionName string) (*types.Session, error) {
+// Returns session data and whether Claude was already executed (for new sessions)
+func (m *Manager) CreateOrResumeSession(sessionName string) (*types.Session, bool, error) {
 	var session *types.Session
 	var err error
 
@@ -84,51 +85,46 @@ func (m *Manager) CreateOrResumeSession(sessionName string) (*types.Session, err
 		// Load existing session data
 		session, err = m.storage.LoadSession(sessionName)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
-		fmt.Printf("Kamui: Resuming session '%s'\n", sessionName)
 	} else {
 		// Create new session
 		session, err = m.storage.CreateSession(sessionName, m.projectPath)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
-		fmt.Printf("Kamui: Created new session '%s'\n", sessionName)
 	}
 
-	// Check if this AGX session has a stored Claude session to restore
+	// Check if this session has a stored Claude session to restore
 	var shouldStartFreshClaude bool
 	if session.Claude.SessionID != "" {
 		// Check if the stored Claude session still exists
 		exists, err := m.claudeClient.HasSession(session.Claude.SessionID, session.Project.WorkingDirectory)
-		if err != nil {
-			fmt.Printf("Kamui: Error checking stored Claude session: %v\n", err)
-			shouldStartFreshClaude = true
-		} else if !exists {
-			fmt.Printf("Kamui: Stored Claude session '%s' no longer exists, starting fresh\n", session.Claude.SessionID)
+		if err != nil || !exists {
 			shouldStartFreshClaude = true
 		} else {
-			fmt.Printf("Kamui: Claude session '%s' is ready\n", session.Claude.SessionID)
 			shouldStartFreshClaude = false
 		}
 	} else {
-		fmt.Printf("Kamui: No stored Claude session for '%s', starting fresh\n", session.SessionID)
 		shouldStartFreshClaude = true
 	}
 
-	// Set up Claude session
-	if err := m.setupClaudeSession(session, shouldStartFreshClaude); err != nil {
-		return nil, fmt.Errorf("failed to setup Claude session: %w", err)
+	// Set up Claude session  
+	if shouldStartFreshClaude {
+		if err := m.setupClaudeSession(session, true); err != nil {
+			return nil, false, fmt.Errorf("failed to setup Claude session: %w", err)
+		}
 	}
 
 	// Update access time and save
 	session.LastAccessed = time.Now()
 	session.LastModified = time.Now()
 	if err := m.storage.SaveSession(session); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	return session, nil
+	// Return whether Claude was already executed (true for new sessions, false for resume)
+	return session, shouldStartFreshClaude, nil
 }
 
 // GetSession retrieves an existing session
@@ -175,25 +171,19 @@ func (m *Manager) GetProjectName() string {
 	return filepath.Base(m.projectPath)
 }
 
-// setupClaudeSession configures the Claude session
+// setupClaudeSession configures the Claude session using subprocess monitoring
 func (m *Manager) setupClaudeSession(session *types.Session, startFresh bool) error {
 	if startFresh {
-		// Create a fresh Claude session
-		sessionID, err := m.claudeClient.StartFreshAndDiscoverSessionID(session.Project.WorkingDirectory)
-		if err != nil {
+		// Launch Claude with monitor subprocess - this blocks until Claude exits
+		if err := m.claudeClient.LaunchClaudeInteractively(session.Project.WorkingDirectory, session.SessionID); err != nil {
 			return err
 		}
 
-		// Store the discovered session ID
-		session.Claude.SessionID = sessionID
-		session.Claude.HasActiveContext = true
-		session.Claude.LastInteraction = time.Now()
-		session.LastModified = time.Now()
-
-		fmt.Printf("Kamui: Created fresh Claude session: %s\n", sessionID)
-	} else {
-		// Existing Claude session is already ready
-		fmt.Printf("Kamui: Using existing Claude session: %s\n", session.Claude.SessionID)
+		// After Claude exits, the monitor subprocess should have saved the mapping
+		// Try to reload the session to get the updated Claude session ID
+		if updatedSession, err := m.storage.LoadSession(session.SessionID); err == nil {
+			session.Claude = updatedSession.Claude
+		}
 	}
 
 	return nil

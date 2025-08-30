@@ -14,18 +14,21 @@ import (
 // Storage manages session file operations
 type Storage struct {
 	projectPath string
-	kamuiDir    string
-	sessionsDir string
+	sessionsDir string // Global sessions directory in ~/.claude/kamui-sessions/
 }
 
 // New creates a new Storage instance for the given project path
 func New(projectPath string) *Storage {
-	kamuiDir := filepath.Join(projectPath, ".claude")
-	sessionsDir := filepath.Join(kamuiDir, "kamui-sessions")
+	// Use global sessions directory in user's home
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		// Fallback to current working directory if home directory isn't accessible
+		homeDir = "."
+	}
+	sessionsDir := filepath.Join(homeDir, ".claude", "kamui-sessions")
 
 	return &Storage{
 		projectPath: projectPath,
-		kamuiDir:    kamuiDir,
 		sessionsDir: sessionsDir,
 	}
 }
@@ -44,13 +47,13 @@ func (s *Storage) Initialize() error {
 	return nil
 }
 
-// SaveSession saves a session to disk
+// SaveSession saves a session to disk using friendly name as filename
 func (s *Storage) SaveSession(session *types.Session) error {
 	if err := s.Initialize(); err != nil {
 		return err
 	}
 
-	// Generate session file path
+	// Use SessionID (which contains friendly name like "Undolly") as filename
 	sessionFile := filepath.Join(s.sessionsDir, session.SessionID+".json")
 
 	// Create temporary file for atomic write
@@ -180,12 +183,9 @@ func (s *Storage) DeleteSession(sessionID string) error {
 	return nil
 }
 
-// CreateSession creates a new session with default values
+// CreateSession creates a new session with minimal required data
 func (s *Storage) CreateSession(sessionID, projectPath string) (*types.Session, error) {
 	now := time.Now()
-
-	// Get project name from path
-	projectName := filepath.Base(projectPath)
 
 	session := &types.Session{
 		Version:      "1.0.0",
@@ -195,65 +195,12 @@ func (s *Storage) CreateSession(sessionID, projectPath string) (*types.Session, 
 		LastModified: now,
 
 		Project: types.ProjectInfo{
-			Name:             projectName,
 			Path:             projectPath,
 			WorkingDirectory: projectPath,
-			GitBranch:        "", // TODO: Get from git
-			GitCommit:        "", // TODO: Get from git
-			GitRemote:        "", // TODO: Get from git
 		},
 
 		Claude: types.ClaudeInfo{
-			SessionID:        "",
-			ConversationID:   "",
-			ModelUsed:        "claude-3-sonnet",
-			HasActiveContext: false,
-			LastInteraction:  time.Time{},
-			ContextInfo: types.ContextInfo{
-				MessageCount:    0,
-				EstimatedTokens: 0,
-				LastCommand:     "",
-				WorkingFiles:    []string{},
-			},
-			ResumeInfo: types.ResumeInfo{
-				CanResume:         false,
-				ResumeCommand:     "",
-				LastResumeAttempt: nil,
-				ResumeErrors:      []string{},
-			},
-		},
-
-		Metadata: types.SessionMeta{
-			Description: fmt.Sprintf("Development session for %s", projectName),
-			Tags:        []string{"development"},
-			Variant:     "main",
-			IsDefault:   true,
-			CustomData:  make(map[string]interface{}),
-		},
-
-		Stats: types.SessionStats{
-			SessionCount:         1,
-			TotalDuration:        "0m",
-			AverageSessionLength: "0m",
-			LastSessionDuration:  "0m",
-			MostActiveDay:        now.Format("2006-01-02"),
-			CommandsExecuted:     0,
-		},
-
-		Lifecycle: types.LifecycleInfo{
-			State: types.SessionStateActive,
-			StateHistory: []types.StateChange{
-				{
-					State:     types.SessionStateActive,
-					Timestamp: now,
-					Reason:    "session_created",
-				},
-			},
-			AutoCleanup: types.CleanupConfig{
-				Enabled:           true,
-				InactiveThreshold: "30d",
-				LastCleanupCheck:  now,
-			},
+			SessionID: "", // Will be set when Claude session is created
 		},
 	}
 

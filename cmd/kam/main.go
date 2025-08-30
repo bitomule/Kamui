@@ -16,7 +16,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/bitomule/kamui/internal/claude"
 	"github.com/bitomule/kamui/internal/session"
+	"github.com/bitomule/kamui/internal/storage"
 	"github.com/bitomule/kamui/pkg/types"
 )
 
@@ -66,6 +68,7 @@ func init() {
 
 	// Add subcommands
 	rootCmd.AddCommand(setupCmd)
+	rootCmd.AddCommand(monitorCmd)
 }
 
 func initConfig() {
@@ -148,30 +151,109 @@ func runSession(_ *cobra.Command, args []string) error {
 	}
 
 	// Create or resume session
-	sessionData, err := sessionManager.CreateOrResumeSession(sessionName)
+	sessionData, claudeWasExecuted, err := sessionManager.CreateOrResumeSession(sessionName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return err
 	}
 
-	fmt.Printf("Kamui: Session '%s' ready\n", sessionData.SessionID)
-	fmt.Printf("Kamui: Project: %s\n", sessionData.Project.Name)
-	fmt.Printf("Kamui: Path: %s\n", sessionData.Project.Path)
-	fmt.Printf("Kamui: Created: %s\n", sessionData.Created.Format("2006-01-02 15:04:05"))
-
-	if sessionData.Claude.SessionID != "" {
-		fmt.Printf("Kamui: Claude session: %s (ready)\n", sessionData.Claude.SessionID)
+	// If Claude was already executed during session creation, we're done
+	if claudeWasExecuted {
+		return nil
 	}
 
-	fmt.Println("Kamui: Starting Claude session...")
-
-	// Execute Claude session directly
+	// Execute Claude session directly (for resume)
 	if err := executeClaudeSession(sessionManager, sessionData); err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting Claude: %v\n", err)
 		return err
 	}
 
 	return nil
+}
+
+// runMonitor implements the background monitoring process
+func runMonitor(sessionName, workingDir string) error {
+	// Create Claude client for monitoring
+	claudeClient, err := claude.New()
+	if err != nil {
+		return fmt.Errorf("failed to create Claude client: %w", err)
+	}
+	
+	// Get baseline sessions before monitoring
+	beforeSessions, err := claudeClient.DiscoverExistingSessions(workingDir)
+	if err != nil {
+		return fmt.Errorf("failed to discover existing sessions: %w", err)
+	}
+	
+	// Monitor for new session creation (60 second timeout)
+	timeout := 60 * time.Second
+	start := time.Now()
+	
+	for time.Since(start) < timeout {
+		// Check for new sessions
+		afterSessions, err := claudeClient.DiscoverExistingSessions(workingDir)
+		if err != nil {
+			time.Sleep(1 * time.Second)
+			continue // Keep trying
+		}
+		
+		// Find any new session
+		for _, sessionID := range afterSessions {
+			found := false
+			for _, oldSession := range beforeSessions {
+				if sessionID == oldSession {
+					found = true
+					break
+				}
+			}
+			if !found {
+				// Found new session - save mapping and exit
+				if err := saveSessionMapping(sessionName, sessionID, workingDir); err != nil {
+					return fmt.Errorf("failed to save session mapping: %w", err)
+				}
+				
+				// Session mapping saved silently
+				return nil // Exit monitor process
+			}
+		}
+		
+		// Wait before checking again
+		time.Sleep(1 * time.Second)
+	}
+	
+	// Timeout reached
+	return fmt.Errorf("timeout waiting for Claude session creation")
+}
+
+// saveSessionMapping saves the session mapping to global storage
+func saveSessionMapping(sessionName, claudeSessionID, workingDir string) error {
+	// Create storage instance
+	storage := storage.New(workingDir)
+	
+	// Create or load session
+	var session *types.Session
+	if storage.SessionExists(sessionName) {
+		var err error
+		session, err = storage.LoadSession(sessionName)
+		if err != nil {
+			return err
+		}
+	} else {
+		var err error  
+		session, err = storage.CreateSession(sessionName, workingDir)
+		if err != nil {
+			return err
+		}
+	}
+	
+	// Update Claude session info
+	session.Claude.SessionID = claudeSessionID
+	session.Claude.HasActiveContext = true
+	session.Claude.LastInteraction = time.Now()
+	session.LastModified = time.Now()
+	
+	// Save updated session
+	return storage.SaveSession(session)
 }
 
 // Setup command
@@ -181,6 +263,19 @@ var setupCmd = &cobra.Command{
 	Long:  "Configures Claude Code to display Kamui session status automatically",
 	RunE: func(_ *cobra.Command, _ []string) error {
 		return setupClaudeIntegration()
+	},
+}
+
+// Hidden monitor command for background session monitoring
+var monitorCmd = &cobra.Command{
+	Use:    "monitor [session-name] [working-directory]",
+	Short:  "Background session monitor (internal use)",
+	Hidden: true, // Hide from help output
+	Args:   cobra.ExactArgs(2),
+	RunE: func(_ *cobra.Command, args []string) error {
+		sessionName := args[0]
+		workingDir := args[1]
+		return runMonitor(sessionName, workingDir)
 	},
 }
 

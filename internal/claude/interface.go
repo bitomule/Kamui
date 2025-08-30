@@ -1,6 +1,7 @@
 // Package claude provides integration with Claude Code CLI
 package claude
 
+
 // ClientInterface defines the methods required for Claude Code integration
 // This interface allows for easy mocking in unit tests
 type ClientInterface interface {
@@ -28,8 +29,8 @@ type ClientInterface interface {
 	// DiscoverNewestSession finds the newest Claude session (most recently created)
 	DiscoverNewestSession(workingDir string) (string, error)
 
-	// StartFreshAndDiscoverSessionID starts Claude, creates a session, and returns the ID
-	StartFreshAndDiscoverSessionID(workingDir string) (string, error)
+	// LaunchClaudeInteractively spawns monitor subprocess and runs Claude in main process
+	LaunchClaudeInteractively(workingDir string, sessionName string) error
 }
 
 // Verify that Client implements ClientInterface at compile time

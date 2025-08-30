@@ -2,8 +2,6 @@
 package claude
 
 import (
-	"bufio"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -42,8 +40,15 @@ func (c *Client) HasSession(sessionID, workingDir string) (bool, error) {
 		return false, nil
 	}
 
+	// Use the same path resolution as other methods to handle symlinks
+	canonicalPath, err := filepath.EvalSymlinks(workingDir)
+	if err != nil {
+		// If we can't resolve symlinks, use the original path
+		canonicalPath = workingDir
+	}
+
 	// Encode the path like Claude does (replace / with -)
-	encodedPath := strings.ReplaceAll(workingDir, "/", "-")
+	encodedPath := strings.ReplaceAll(canonicalPath, "/", "-")
 
 	// Check if session file exists in ~/.claude/projects/[encoded-path]/
 	homeDir, err := os.UserHomeDir()
@@ -203,8 +208,15 @@ type Message struct {
 
 // DiscoverExistingSessions finds existing Claude sessions for the current directory
 func (c *Client) DiscoverExistingSessions(workingDir string) ([]string, error) {
+	// Resolve canonical path to handle symlinks like /tmp -> /private/tmp
+	canonicalPath, err := filepath.EvalSymlinks(workingDir)
+	if err != nil {
+		// If we can't resolve symlinks, use the original path
+		canonicalPath = workingDir
+	}
+
 	// Encode the path like Claude does (replace / with -)
-	encodedPath := strings.ReplaceAll(workingDir, "/", "-")
+	encodedPath := strings.ReplaceAll(canonicalPath, "/", "-")
 
 	// Check if project directory exists in ~/.claude/projects/
 	homeDir, err := os.UserHomeDir()
@@ -251,188 +263,122 @@ func (c *Client) DiscoverNewestSession(workingDir string) (string, error) {
 	return sessions[0], nil
 }
 
-// StartFreshAndDiscoverSessionID starts Claude, sends a message to create session, discovers ID, then kills it
-// This ensures each AGX session gets a truly independent Claude session
-func (c *Client) StartFreshAndDiscoverSessionID(workingDir string) (string, error) {
-	fmt.Printf("Kamui: Starting fresh Claude session to ensure independence...\n")
-
-	// Get baseline sessions before starting
-	beforeSessions, err := c.DiscoverExistingSessions(workingDir)
+// LaunchClaudeInteractively spawns a monitor subprocess and runs Claude in main process
+func (c *Client) LaunchClaudeInteractively(workingDir string, sessionName string) error {
+	// Spawn monitor subprocess first
+	monitorCmd, err := c.spawnMonitorProcess(sessionName, workingDir)
 	if err != nil {
-		return "", err
+		return fmt.Errorf("failed to spawn monitor process: %w", err)
 	}
-
-	fmt.Printf("Kamui: Found %d existing Claude sessions before starting\n", len(beforeSessions))
-
-	// Use Claude with --print to send a dummy message that creates a session
-	// This forces Claude to create a new session file
-	cmd := exec.Command(c.claudePath, "--print", "KAMUI_INIT_MESSAGE")
+	
+	// Set up cleanup timer for monitor process (1 minute timeout)
+	go func() {
+		time.Sleep(1 * time.Minute)
+		if monitorCmd.Process != nil {
+			monitorCmd.Process.Kill()
+		}
+	}()
+	
+	// Run Claude in main process (blocking with full terminal access)
+	cmd := exec.Command(c.claudePath)
 	cmd.Dir = workingDir
-
-	fmt.Printf("Kamui: Creating fresh Claude session...\n")
-	err = cmd.Run()
-	if err != nil {
-		return "", types.NewClaudeError(
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout  
+	cmd.Stderr = os.Stderr
+	
+	// Set up Claude environment for hooks
+	env := os.Environ()
+	env = append(env, fmt.Sprintf("KAMUI_SESSION_ID=%s", sessionName))
+	env = append(env, "KAMUI_ACTIVE=1")
+	env = append(env, fmt.Sprintf("KAMUI_PROJECT_NAME=%s", filepath.Base(workingDir)))
+	cmd.Env = env
+	
+	// This blocks until Claude exits - main process handles user interaction
+	if err := cmd.Run(); err != nil {
+		return types.NewClaudeError(
 			types.ErrCodeClaudeStartFailed,
-			"failed to start Claude for fresh session creation",
+			"Claude session ended with error",
 			err,
 		)
 	}
+	
+	return nil
+}
 
-	// Wait a moment for session file to be written
-	time.Sleep(1 * time.Second)
-
-	// Get sessions after the message to find the new one
-	afterSessions, err := c.DiscoverExistingSessions(workingDir)
+// spawnMonitorProcess starts the monitor subprocess
+func (c *Client) spawnMonitorProcess(sessionName, workingDir string) (*exec.Cmd, error) {
+	// Get path to current executable
+	executable, err := os.Executable()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
+	
+	// Spawn monitor subprocess with no stdio (truly background)
+	cmd := exec.Command(executable, "monitor", sessionName, workingDir)
+	cmd.Dir = workingDir
+	// Don't attach stdin/stdout/stderr - runs in background
+	
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	
+	return cmd, nil
+}
 
-	fmt.Printf("Kamui: Found %d Claude sessions after creation\n", len(afterSessions))
 
-	// Find the new session by comparing before and after
-	var newSessionID string
-	for _, session := range afterSessions {
-		found := false
-		for _, oldSession := range beforeSessions {
-			if session == oldSession {
-				found = true
-				break
+// monitorForSession monitors filesystem for new Claude sessions
+func (c *Client) monitorForSession(workingDir string, beforeSessions []string, timeout time.Duration) (string, error) {
+	start := time.Now()
+	
+	for time.Since(start) < timeout {
+		// Check for new sessions
+		afterSessions, err := c.DiscoverExistingSessions(workingDir)
+		if err != nil {
+			time.Sleep(1 * time.Second)
+			continue // Keep trying
+		}
+		
+		// Find any new session
+		for _, sessionID := range afterSessions {
+			found := false
+			for _, oldSession := range beforeSessions {
+				if sessionID == oldSession {
+					found = true
+					break
+				}
+			}
+			if !found {
+				// Found new session
+				return sessionID, nil
 			}
 		}
-		if !found {
-			newSessionID = session
-			break
-		}
+		
+		// Wait before checking again
+		time.Sleep(1 * time.Second)
 	}
-
-	if newSessionID == "" {
-		return "", types.NewClaudeError(
-			types.ErrCodeClaudeStartFailed,
-			"failed to discover new Claude session ID after creation",
-			nil,
-		)
-	}
-
-	// Clean up the dummy message from the session file
-	if err := c.cleanupInitMessage(workingDir, newSessionID); err != nil {
-		fmt.Printf("Kamui: Warning - could not clean up init message: %v\n", err)
-		// Don't fail the whole operation if cleanup fails
-	}
-
-	fmt.Printf("Kamui: Created clean Claude session ID: %s\n", newSessionID)
-	return newSessionID, nil
+	
+	// Timeout reached
+	return "", types.NewClaudeError(
+		types.ErrCodeClaudeStartFailed,
+		"timeout monitoring for Claude session creation",
+		nil,
+	)
 }
 
-// cleanupInitMessage removes the exact dummy KAMUI_INIT_MESSAGE from the Claude session JSONL file
-// Only removes user messages that exactly match our init message, not assistant responses
-func (c *Client) cleanupInitMessage(workingDir, sessionID string) error {
-	sessionFile, err := c.getSessionFilePath(workingDir, sessionID)
-	if err != nil {
-		return err
-	}
 
-	if _, statErr := os.Stat(sessionFile); os.IsNotExist(statErr) {
-		return fmt.Errorf("session file not found: %s", sessionFile)
-	}
-
-	cleanLines, err := c.filterInitMessages(sessionFile)
-	if err != nil {
-		return err
-	}
-
-	return c.writeCleanedSession(sessionFile, cleanLines)
-}
-
+// getSessionFilePath returns the path to a Claude session file
 func (c *Client) getSessionFilePath(workingDir, sessionID string) (string, error) {
-	encodedPath := strings.ReplaceAll(workingDir, "/", "-")
+	// Resolve canonical path to handle symlinks like /tmp -> /private/tmp
+	canonicalPath, err := filepath.EvalSymlinks(workingDir)
+	if err != nil {
+		// If we can't resolve symlinks, use the original path
+		canonicalPath = workingDir
+	}
+
+	encodedPath := strings.ReplaceAll(canonicalPath, "/", "-")
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(homeDir, ".claude", "projects", encodedPath, sessionID+".jsonl"), nil
-}
-
-func (c *Client) filterInitMessages(sessionFile string) ([]string, error) {
-	file, err := os.Open(sessionFile)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	var cleanLines []string
-	scanner := bufio.NewScanner(file)
-	foundInitMessage := false
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		if c.shouldKeepLine(line, &foundInitMessage) {
-			cleanLines = append(cleanLines, line)
-		}
-	}
-
-	return cleanLines, scanner.Err()
-}
-
-func (c *Client) shouldKeepLine(line string, foundInitMessage *bool) bool {
-	var message map[string]interface{}
-	if err := json.Unmarshal([]byte(line), &message); err != nil {
-		return true // Keep unparseable lines
-	}
-
-	messageType, hasType := message["type"].(string)
-	if !hasType || messageType != "user" {
-		return true // Keep non-user messages
-	}
-
-	if *foundInitMessage {
-		return true // Already found and removed init message
-	}
-
-	if c.isInitMessage(message) {
-		*foundInitMessage = true
-		fmt.Printf("Kamui: Removing exact init message from Claude session\n")
-		return false // Skip this line
-	}
-
-	return true
-}
-
-func (c *Client) isInitMessage(message map[string]interface{}) bool {
-	// Check nested message structure
-	if messageData, ok := message["message"].(map[string]interface{}); ok {
-		if content, ok := messageData["content"].(string); ok && content == "KAMUI_INIT_MESSAGE" {
-			return true
-		}
-	}
-
-	// Check direct content field
-	if content, ok := message["content"].(string); ok && content == "KAMUI_INIT_MESSAGE" {
-		return true
-	}
-
-	return false
-}
-
-func (c *Client) writeCleanedSession(sessionFile string, cleanLines []string) error {
-	tempFile := sessionFile + ".tmp"
-	outFile, err := os.Create(tempFile)
-	if err != nil {
-		return err
-	}
-	defer outFile.Close()
-
-	for _, line := range cleanLines {
-		if _, err := outFile.WriteString(line + "\n"); err != nil {
-			return err
-		}
-	}
-
-	_ = outFile.Close()
-	if err := os.Rename(tempFile, sessionFile); err != nil {
-		_ = os.Remove(tempFile) // cleanup temp file on failure
-		return err
-	}
-
-	return nil
 }
